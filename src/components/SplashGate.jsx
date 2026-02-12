@@ -1,20 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import CitySelector from "./CitySelector";
 
 /* =========================
    الصور (لو في public/)
    ========================= */
-import introBg from "/intro.png";   // خلفية الشارع المصري
-import zekrLogo from "/logo.png";   // لوجو ذِكْر المدور
+import introBg from "/intro.png";      // خلفية الشارع المصري
+import zekrLogo from "/logo.png";      // لوجو ذِكْر المدور
+import cityBg from "/city-bg.png";     // ✅ الخلفية اللي عملتهالك (حطها في public)
 
 /* =========================
    إعدادات
    ========================= */
 const MIN_INTRO_MS = 2000;
 
-/* =========================
-   عرض الانترو مرة في اليوم
-   ========================= */
+/* ========================= */
 function shouldShowIntroToday() {
   const key = "zekr-intro-date";
   const today = new Date().toDateString();
@@ -35,9 +35,7 @@ function installNetworkTrackerOnce() {
   window.__zekrListeners = new Set();
 
   const notify = () => {
-    window.__zekrListeners.forEach((fn) =>
-      fn(window.__zekrPending)
-    );
+    window.__zekrListeners.forEach((fn) => fn(window.__zekrPending));
   };
 
   const inc = () => {
@@ -101,6 +99,11 @@ export default function SplashGate({ children }) {
   const [pending, setPending] = useState(0);
   const startedAt = useRef(Date.now());
 
+  // ✅ بوابة المدينة: لو مفيش city في localStorage يبقى لازم يختار
+  const [cityReady, setCityReady] = useState(() => {
+    return Boolean(localStorage.getItem("city"));
+  });
+
   useEffect(() => {
     installNetworkTrackerOnce();
     const unsub = window.__zekrSubscribePending((p) => setPending(p));
@@ -133,7 +136,16 @@ export default function SplashGate({ children }) {
 
   return (
     <>
-      {children}
+      {/* ✅ ممنوع عرض أي جزء من الموقع قبل اختيار المحافظة */}
+      {(!open && cityReady) ? children : null}
+
+      {/* ✅ بعد انتهاء الـ Intro مباشرة لو مفيش محافظة → CitySelector */}
+      {!open && !cityReady && (
+        <CitySelector
+          backgroundImage={cityBg}
+          onDone={() => setCityReady(true)}
+        />
+      )}
 
       <AnimatePresence>
         {open && (
@@ -250,9 +262,7 @@ function Lantern({ left, top, delay, reduce }) {
     <motion.div
       className="absolute"
       style={{ left, top }}
-      animate={
-        reduce ? {} : { y: [0, 10, 0], opacity: [0.7, 1, 0.7] }
-      }
+      animate={reduce ? {} : { y: [0, 10, 0], opacity: [0.7, 1, 0.7] }}
       transition={{
         duration: 3,
         repeat: Infinity,

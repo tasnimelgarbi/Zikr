@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Copy,
-  Share2,
-  RefreshCw,
-  CheckCircle2,
-  X,
-  Image,
-} from "lucide-react";
+import { Copy, Share2, RefreshCw, CheckCircle2, X, Image } from "lucide-react";
 import { toPng } from "html-to-image";
 import DUAS from "../data/duas.json";
 import BackButton from "./BackButton";
@@ -39,42 +32,25 @@ function seededShuffle(arr, seed) {
 
 function buildShareText(title, text) {
   const clean = (text || "").replace(/\n{3,}/g, "\n\n").trim();
-  return `🕋 ${title}\n\n${clean}\n\n— شارك تؤجر 🌿\nzekr.app`; // غيّر الدومين بتاعك هنا
+  return `🕋 ${title}\n\n${clean}\n\n— شارك تؤجر 🌿\nhttps://zikrr.vercel.app/`;
 }
 
-/** ✅ تحويل dataURL إلى File */
 async function dataUrlToFile(dataUrl, fileName = "dua.png") {
   const res = await fetch(dataUrl);
   const blob = await res.blob();
   return new File([blob], fileName, { type: "image/png" });
 }
 
-function Toast({ show, text, onClose }) {
-  if (!show) return null;
-  return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[999]">
-      <div className="flex items-center gap-2 rounded-full bg-zinc-900 text-white px-4 py-2 shadow-lg">
-        <CheckCircle2 className="w-5 h-5" />
-        <span className="text-sm font-semibold">{text}</span>
-        <button onClick={onClose} className="ml-2">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /**
- * ✅ كارت مشاركة مخفي (Design جامد للصورة اللي هتتشير)
- * - ده مش ظاهر للمستخدم
- * - بيتحوّل لـ PNG وقت المشاركة
+ * ✅ ShareCard (مخفي) — سيبناه زي ما هو
+ * ⚠️ أهم تعديل للصورة هيكون في toPng options (style.opacity = 1)
  */
 function ShareCard({ dua, idx }) {
   return (
     <div
       id={`share-card-${idx}`}
       dir="rtl"
-      className="fixed -left-[9999px] top-0 w-[1080px] h-[1350px] overflow-hidden"
+      className="fixed left-0 top-0 w-[1080px] h-[1350px] overflow-hidden opacity-0 pointer-events-none -z-10"
       style={{
         background:
           "radial-gradient(circle at 20% 10%, rgba(215,178,102,.35), transparent 55%), radial-gradient(circle at 80% 40%, rgba(200,155,75,.35), transparent 60%), linear-gradient(180deg,#FBF6EA,#F3EAD2,#EAD9B8)",
@@ -95,10 +71,11 @@ function ShareCard({ dua, idx }) {
       <div className="relative p-16">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-5">
-            {/* ✅ لوجو الموقع (حطه في public/logo.png) */}
+            {/* ✅ لوجو الموقع (public/logo.png) */}
             <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-[#D7B266] shadow-[0_18px_50px_rgba(0,0,0,0.15)] bg-white">
               <img
                 src="/logo.png"
+                crossOrigin="anonymous"
                 alt="logo"
                 className="h-full w-full object-cover"
               />
@@ -114,8 +91,12 @@ function ShareCard({ dua, idx }) {
             </div>
           </div>
 
-          <div className="rounded-full px-6 py-3 text-[22px] font-extrabold text-white shadow-lg"
-               style={{ background: "linear-gradient(180deg,#D7B266,#C89B4B,#B98636)" }}>
+          <div
+            className="rounded-full px-6 py-3 text-[22px] font-extrabold text-white shadow-lg"
+            style={{
+              background: "linear-gradient(180deg,#D7B266,#C89B4B,#B98636)",
+            }}
+          >
             🌿 شارك تؤجر
           </div>
         </div>
@@ -140,7 +121,7 @@ function ShareCard({ dua, idx }) {
           </div>
 
           <div className="text-[26px] font-extrabold text-[#1f1f1f]">
-            zekr.app
+            https://zikrr.vercel.app/
           </div>
         </div>
 
@@ -155,12 +136,23 @@ function ShareCard({ dua, idx }) {
 
 export default function DuaDaily() {
   const [duas, setDuas] = useState([]);
-  const [toast, setToast] = useState({ show: false, text: "" });
   const [sharingId, setSharingId] = useState(null);
 
-  const showToast = (t) => {
-    setToast({ show: true, text: t });
-    setTimeout(() => setToast({ show: false, text: "" }), 1500);
+  // ✅ Toast state
+  const [toast, setToast] = useState(null);
+
+  // ✅ Toast helper
+  const showToast = (type) => {
+    const messages = {
+      copy: "✅ تم نسخ الدعاء بنجاح — ربنا يجعله في ميزان حسناتك 🤍",
+      share: "🤲 تم مشاركة الدعاء — شارك تؤجر بإذن الله 🌿",
+      image: "🖼️ تم مشاركة الصورة — جعلها الله صدقة جارية لك 🤍",
+    };
+
+    setToast({ type, text: messages[type] || "تم بنجاح 🤍" });
+
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToast(null), 2200);
   };
 
   const pickDaily = ({ forceNew = false } = {}) => {
@@ -195,7 +187,7 @@ export default function DuaDaily() {
 
   const copyDua = async (dua) => {
     await navigator.clipboard.writeText(buildShareText(dua.title, dua.text));
-    showToast("تم النسخ 🤍");
+    showToast("copy");
   };
 
   const shareDuaText = async (dua) => {
@@ -205,52 +197,77 @@ export default function DuaDaily() {
     } else {
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
     }
-    showToast("تمت المشاركة 🌿");
+    showToast("share");
   };
 
   /**
-   * ✅ مشاركة صورة (بدون تحميل)
-   * - يطلع PNG من ShareCard (المخفي)
-   * - يستخدم navigator.share(files) لو متاح
-   * - fallback: مشاركة نص/واتساب
+   * ✅ مشاركة صورة (تعديل الصورة فقط)
+   * - أهم حاجة: style.opacity=1 في toPng عشان الكارت مخفي بـ opacity-0
+   * - استنى الخطوط والصور قبل التصوير
    */
   const shareAsImage = async (dua, idx) => {
     try {
       setSharingId(idx);
 
-      // استنى frame عشان الـShareCard يبقى موجود في الـDOM
       await new Promise((r) => requestAnimationFrame(r));
 
       const node = document.getElementById(`share-card-${idx}`);
       if (!node) throw new Error("Share card not found");
 
-      // جودة أعلى (مهم جدًا عشان الصورة تبقى فخمة)
+      // ✅ استنى تحميل الخطوط
+      if (document.fonts?.ready) await document.fonts.ready;
+
+      // ✅ استنى تحميل الصور داخل الكارت
+      const imgs = Array.from(node.querySelectorAll("img"));
+      await Promise.all(
+        imgs.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((res) => {
+            img.onload = res;
+            img.onerror = res;
+          });
+        })
+      );
+
       const dataUrl = await toPng(node, {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: "#FBF6EA",
+
+        // 🔥 ده اللي بيحل مشكلة "خلفية بس"
+        // لأن الكارت مخفي بـ opacity-0، فبنخلي نسخة التصوير opacity=1
+        style: {
+          opacity: "1",
+          transform: "none",
+        },
       });
 
       const file = await dataUrlToFile(dataUrl, "dua-zekr.png");
-      const text = `🌿 دعاء اليوم من ذِكر\nzekr.app`; // غيّر الدومين
+      const text = `🌿 دعاء اليوم من ذِكر\nhttps://zikrr.vercel.app/`;
 
-      // ✅ لو المتصفح بيدعم مشاركة ملفات
-      if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+      if (
+        navigator.canShare &&
+        navigator.canShare({ files: [file] }) &&
+        navigator.share
+      ) {
         await navigator.share({
           title: "ذِكر",
           text,
           files: [file],
         });
-        showToast("تمت مشاركة الصورة 🌿");
+        showToast("image");
         return;
       }
 
-      // ✅ fallback 1: واتساب بالنص
-      window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText(dua.title, dua.text))}`);
-      showToast("مشاركة نص بدل الصورة ✅");
+      // fallback: واتساب بالنص
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(
+          buildShareText(dua.title, dua.text)
+        )}`
+      );
+      showToast("share");
     } catch (e) {
       console.error(e);
-      showToast("تعذر مشاركة الصورة ❌");
     } finally {
       setSharingId(null);
     }
@@ -258,6 +275,39 @@ export default function DuaDaily() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#F4EDDF] px-4 py-10">
+      {/* ✅ Toast Popup */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] px-4 w-full max-w-md">
+          <div className="rounded-2xl bg-white/95 backdrop-blur border border-black/10 shadow-[0_18px_50px_rgba(0,0,0,0.18)] p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5">
+                {toast.type === "copy" && (
+                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                )}
+                {toast.type === "share" && (
+                  <Share2 className="w-6 h-6 text-[#B98636]" />
+                )}
+                {toast.type === "image" && (
+                  <Image className="w-6 h-6 text-zinc-700" />
+                )}
+              </div>
+
+              <div className="flex-1 text-[15px] leading-[1.8] font-semibold text-zinc-800">
+                {toast.text}
+              </div>
+
+              <button
+                onClick={() => setToast(null)}
+                className="p-1 rounded-full hover:bg-black/5"
+                aria-label="close"
+              >
+                <X className="w-5 h-5 text-zinc-500" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-md mx-auto space-y-5">
         <BackButton className="mb-4" />
 
@@ -283,7 +333,7 @@ export default function DuaDaily() {
             {/* ✅ ShareCard مخفي: ده اللي بيتحوّل لصورة عند المشاركة */}
             <ShareCard dua={dua} idx={idx} />
 
-            {/* ✅ الكارت اللي ظاهر في الصفحة */}
+            {/* ✅ الكارت اللي ظاهر في الصفحة (زي كودك) */}
             <div className="rounded-[28px] bg-[#FBFAF6] shadow-lg overflow-hidden">
               <div className="p-4 bg-[#F3EAD2] font-extrabold text-center">
                 {dua.title}
@@ -327,12 +377,6 @@ export default function DuaDaily() {
           </React.Fragment>
         ))}
       </div>
-
-      <Toast
-        show={toast.show}
-        text={toast.text}
-        onClose={() => setToast({ show: false, text: "" })}
-      />
     </div>
   );
 }

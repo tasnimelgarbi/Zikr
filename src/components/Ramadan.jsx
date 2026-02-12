@@ -18,8 +18,9 @@ const [countdown, setCountdown] = useState("--:--:--");
 const [nextPrayerText, setNextPrayerText] = useState("");
 
 useEffect(() => {
-  fetch("https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5")
-    .then(res => res.json())
+    const city = localStorage.getItem("city") || "Cairo";
+    fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`)
+      .then(res => res.json())
     .then(data => {
       const timings = data.data.timings;
       const hijri = data.data.date.hijri;
@@ -40,7 +41,8 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  fetch("https://api.aladhan.com/v1/hijriCalendarByCity?city=Cairo&country=Egypt&method=5&month=9")
+    const city = localStorage.getItem("city") || "Cairo";
+    fetch(`https://api.aladhan.com/v1/hijriCalendarByCity?city=${city}&country=Egypt&method=5&month=9`)
     .then(res => res.json())
    .then(res => {
   const days = res.data;

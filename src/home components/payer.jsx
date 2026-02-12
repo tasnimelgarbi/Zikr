@@ -25,9 +25,8 @@ export default function PrayerTimes() {
   const [prayers, setPrayers] = useState([]);
 
   useEffect(() => {
-    fetch(
-      "https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5"
-    )
+    const city = localStorage.getItem("city") || "Cairo";
+    fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`)
       .then((res) => res.json())
       .then((data) => {
         const timings = data.data.timings;

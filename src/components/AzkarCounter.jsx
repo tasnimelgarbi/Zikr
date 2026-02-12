@@ -94,6 +94,7 @@ export default function AzkarApp() {
   const offset = circumference - progress * circumference;
 
   return (
+    <>
     <div dir="rtl" className="min-h-screen w-full flex flex-col items-center gap-6">
       <div
         className="absolute inset-0 opacity-20 pointer-events-none"
@@ -197,8 +198,9 @@ export default function AzkarApp() {
           </div>
         </div>
       </div>
-        <Footer />
-    </div>
+    </div>   
+    <Footer />
+    </>
   );
 }
 

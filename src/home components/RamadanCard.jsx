@@ -10,10 +10,12 @@ export default function Ramdan({
 
   useEffect(() => {
     const fetchTimes = async () => {
-      try {
-        const res = await fetch(
-          "https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5"
-        );
+  try {
+    const city = localStorage.getItem("city") || "Cairo";
+
+    const res = await fetch(
+      `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`
+    );
         const data = await res.json();
         const timings = data.data.timings;
 

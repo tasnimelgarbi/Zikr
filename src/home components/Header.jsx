@@ -16,10 +16,12 @@ export default function Header({
   useEffect(() => {
     let prayersArray = [];
 
-    const fetchTimings = async () => {
+      const fetchTimings = async () => {
       try {
+        const city = localStorage.getItem("city") || "Cairo";
+
         const res = await fetch(
-          "https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5"
+          `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`
         );
         const data = await res.json();
         const timings = data.data.timings;
@@ -34,6 +36,7 @@ export default function Header({
         ];
 
         updateCountdown(); // أول مرة
+   
       } catch (err) {
         console.log("Error fetching timings:", err);
       }
@@ -83,10 +86,12 @@ export default function Header({
   // Hijri date logic
   useEffect(() => {
   const fetchRamadan = async () => {
-    try {
-      const res = await fetch(
-        "https://api.aladhan.com/v1/hijriCalendarByCity?city=Cairo&country=Egypt&method=5&month=9"
-      );
+  try {
+    const city = localStorage.getItem("city") || "Cairo";
+
+    const res = await fetch(
+      `https://api.aladhan.com/v1/hijriCalendarByCity?city=${city}&country=Egypt&method=5&month=9`
+    );
       const data = await res.json();
       const today = new Date();
       const firstDay = data.data[0]; // أول يوم رمضان
@@ -126,13 +131,29 @@ export default function Header({
 
   return (
     <header className="w-full">
+      {/* زر تغيير المدينة */}
+      <button
+        onClick={() => {
+          localStorage.removeItem("city");
+          localStorage.removeItem("city_ar");
+          window.location.reload();
+        }}
+        className="absolute top-5 left-3 px-2 py-2 font-bold text-white rounded-full shadow-lg z-50"
+        style={{
+          background:"linear-gradient(180deg, #D7B266 0%, #C89B4B 45%, #B98636 100%)", 
+          border: "2px solid #E7C87A",
+          boxShadow: "0 6px 15px rgba(0,0,0,0.25)",
+        }}
+      >
+        تغيير المدينة
+      </button>
+
       {/* Top mint area */}
       <div className="relative w-full h-[160px] overflow-visible rounded-b-[80px] bg-[#8dcba1c2] px-3 pt-6">
         <div className="pointer-events-none absolute inset-0 opacity-70">
           <div className="absolute -top-10 -left-10 h-44 w-44 rounded-full bg-white/25 blur-2xl" />
           <div className="absolute -top-14 right-0 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
         </div>
-
         <div className="relative flex items-start justify-between">
           <div className="flex items-center gap-2">
             <IconButton onClick={onCalendar} size="small">

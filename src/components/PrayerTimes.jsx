@@ -20,8 +20,9 @@ export default function PrayerTimesCard() {
   const [activeKey, setActiveKey] = useState(null);
 
   useEffect(() => {
-    fetch("https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5")
-      .then(res => res.json())
+  const city = localStorage.getItem("city") || "Cairo";
+  fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`)
+  .then(res => res.json())
       .then(data => {
         setTimes(data.data.timings);
       });
