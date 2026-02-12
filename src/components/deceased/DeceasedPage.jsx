@@ -42,7 +42,7 @@ export default function DeceasedPage() {
   };
 
   return (
-    <SplashGate isDataLoading={isLoading}>
+      <>
       <div
         dir="rtl"
         className="relative min-h-screen overflow-hidden bg-[#F6F0E3] px-4 pb-28"
@@ -126,6 +126,6 @@ export default function DeceasedPage() {
         </div>
       </div>       
          <Footer />
-    </SplashGate>
+         </>
   );
 }
