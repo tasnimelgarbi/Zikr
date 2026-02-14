@@ -10,8 +10,8 @@ import WerdQuran from "./components/WerdQuran.jsx";
 import Quran from "./components/Quran.jsx";
 import Duaa from "./components/Duaa.jsx";
 import DeceasedPage from "./components/deceased/DeceasedPage.jsx";
-
 import SplashGate from "./components/SplashGate.jsx";
+import ScrollToTop from "./ScrollTop.jsx";
 
 function Page({ children }) {
   return (
@@ -50,6 +50,7 @@ function AnimatedRoutes() {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <SplashGate>
         <AnimatedRoutes />
       </SplashGate>

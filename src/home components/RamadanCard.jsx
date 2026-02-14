@@ -1,41 +1,75 @@
 import React, { useEffect, useState } from "react";
-import bg from "/ramdan card.png";
 
 export default function Ramdan({
   title = "رمضان كريم",
 }) {
 
+  const bg = "https://i.ibb.co/vxdkLmLZ/ramdan-card.jpg";
   const [imsak, setImsak] = useState("--:--");
   const [iftar, setIftar] = useState("--:--");
 
-  useEffect(() => {
-    const fetchTimes = async () => {
-  try {
-    const city = localStorage.getItem("city") || "Cairo";
+ useEffect(() => {
+  const fetchTimes = async () => {
+    try {
+      const rawLat = localStorage.getItem("lat");
+      const rawLng = localStorage.getItem("lng");
+      const city = localStorage.getItem("city") || "Cairo";
 
-    const res = await fetch(
-      `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`
-    );
-        const data = await res.json();
-        const timings = data.data.timings;
+      const method = 5;
+      const school = 0;
 
-        // تحويل للـ 12 ساعة بالعربي
+      const lat = rawLat ? Number(rawLat).toFixed(4) : null;
+      const lng = rawLng ? Number(rawLng).toFixed(4) : null;
+
+      const sourceKey =
+        lat && lng ? `gps-${lat}-${lng}` : `city-${encodeURIComponent(city)}`;
+
+      const todayKey = `imsak-iftar-${new Date().toDateString()}-${sourceKey}-m${method}-s${school}`;
+
+      const cached = localStorage.getItem(todayKey);
+      if (cached) {
+        const timings = JSON.parse(cached);
+        applyData(timings);
+        return;
+      }
+
+      let url;
+      if (lat && lng) {
+        url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=${method}&school=${school}`;
+      } else {
+        url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(
+          city
+        )}&country=Egypt&method=${method}&school=${school}`;
+      }
+
+      const res = await fetch(url);
+      const data = await res.json();
+      const timings = data?.data?.timings;
+      if (!timings) return;
+
+      localStorage.setItem(todayKey, JSON.stringify(timings));
+      applyData(timings);
+
+      function applyData(timings) {
+        const cleanTime = (t) => String(t || "").split(" ")[0];
+
         const format12Hour = (time24) => {
-          const [h, m] = time24.split(":").map(Number);
+          const [h, m] = cleanTime(time24).split(":").map(Number);
           const period = h >= 12 ? "م" : "ص";
           const hour12 = h % 12 === 0 ? 12 : h % 12;
-          return `${hour12}:${m.toString().padStart(2,"0")} ${period}`;
+          return `${hour12}:${m.toString().padStart(2, "0")} ${period}`;
         };
 
-        setImsak(format12Hour(timings.Imsak));
+        setImsak(format12Hour(timings.Imsak || timings.Fajr));
         setIftar(format12Hour(timings.Maghrib));
-      } catch (err) {
-        console.log(err);
       }
-    };
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
-    fetchTimes();
-  }, []);
+  fetchTimes();
+}, []);
 
   return (
     <section

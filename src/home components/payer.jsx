@@ -24,15 +24,45 @@ function PrayerIconImg({ name }) {
 export default function PrayerTimes() {
   const [prayers, setPrayers] = useState([]);
 
-  useEffect(() => {
-    const city = localStorage.getItem("city") || "Cairo";
-    fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`)
-      .then((res) => res.json())
-      .then((data) => {
-        const timings = data.data.timings;
+    useEffect(() => {
+      const todayKey = `prayer-times-${new Date().toDateString()}`;
+
+      const cached = localStorage.getItem(todayKey);
+      if (cached) {
+        const timings = JSON.parse(cached);
+        buildAndSetPrayers(timings);
+        return;
+      }
+
+      const lat = localStorage.getItem("lat");
+      const lng = localStorage.getItem("lng");
+
+      let url;
+      if (lat && lng) {
+        url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=5`;
+      } else {
+        const city = localStorage.getItem("city") || "Cairo";
+        url = `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`;
+      }
+
+      fetch(url)
+        .then((res) => res.json())
+        .then((data) => {
+          const timings = data?.data?.timings;
+          if (!timings) return;
+
+          localStorage.setItem(todayKey, JSON.stringify(timings));
+          buildAndSetPrayers(timings);
+        })
+        .catch((err) => {
+          console.error("Prayer API Error:", err);
+        });
+
+      function buildAndSetPrayers(timings) {
+        const cleanTime = (t) => String(t || "").split(" ")[0]; // "05:12 (EET)" -> "05:12"
 
         const formatTime = (time24) => {
-          const [h, m] = time24.split(":").map(Number);
+          const [h, m] = cleanTime(time24).split(":").map(Number);
           const period = h >= 12 ? "م" : "ص";
           let hour = h % 12;
           if (hour === 0) hour = 12;
@@ -40,17 +70,18 @@ export default function PrayerTimes() {
         };
 
         const prayersArray = [
-          { name: "الفجر", time: formatTime(timings.Fajr), rawTime: timings.Fajr, icon: "fajr" },
-          { name: "الشروق", time: formatTime(timings.Sunrise), rawTime: timings.Sunrise, icon: "sunrise" },
-          { name: "الظهر", time: formatTime(timings.Dhuhr), rawTime: timings.Dhuhr, icon: "dhuhr" },
-          { name: "العصر", time: formatTime(timings.Asr), rawTime: timings.Asr, icon: "asr" },
-          { name: "المغرب", time: formatTime(timings.Maghrib), rawTime: timings.Maghrib, icon: "maghrib" },
-          { name: "العشاء", time: formatTime(timings.Isha), rawTime: timings.Isha, icon: "isha" },
+          { name: "الفجر", time: formatTime(timings.Fajr), rawTime: cleanTime(timings.Fajr), icon: "fajr" },
+          { name: "الشروق", time: formatTime(timings.Sunrise), rawTime: cleanTime(timings.Sunrise), icon: "sunrise" },
+          { name: "الظهر", time: formatTime(timings.Dhuhr), rawTime: cleanTime(timings.Dhuhr), icon: "dhuhr" },
+          { name: "العصر", time: formatTime(timings.Asr), rawTime: cleanTime(timings.Asr), icon: "asr" },
+          { name: "المغرب", time: formatTime(timings.Maghrib), rawTime: cleanTime(timings.Maghrib), icon: "maghrib" },
+          { name: "العشاء", time: formatTime(timings.Isha), rawTime: cleanTime(timings.Isha), icon: "isha" },
         ];
 
-        // تحديد الصلاة القادمة ديناميكي
+        // تحديد الصلاة القادمة ديناميكي (زي كودك)
         const now = new Date();
         let foundActive = false;
+
         prayersArray.forEach((p) => {
           const [hour, minute] = p.rawTime.split(":").map(Number);
           const pDate = new Date();
@@ -64,12 +95,11 @@ export default function PrayerTimes() {
           }
         });
 
-        // لو كل الصلوات خلصت، خلي الفجر بكرة active
         if (!foundActive) prayersArray[0].active = true;
 
         setPrayers(prayersArray);
-      });
-  }, []);
+      }
+    }, []);
 
   return (
     <section dir="rtl" className="w-full overflow-x-hidden rounded-2xl p-3 mt-6">

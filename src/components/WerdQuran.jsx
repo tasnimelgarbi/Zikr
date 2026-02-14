@@ -81,7 +81,7 @@ export default function QuranWirdList() {
           <div
             className="absolute inset-0 rounded-b-[80px] opacity-30 pointer-events-none"
             style={{
-              backgroundImage: "url('/full bg azskar.jpeg')",
+              backgroundImage: "url('https://i.ibb.co/S4jrZt90/full-bg-azskar.jpg')",
               backgroundRepeat: "repeat",
               mixBlendMode: "multiply",
             }}
@@ -101,7 +101,7 @@ export default function QuranWirdList() {
         <div
           className="w-full max-w-md h-[90px] flex items-center justify-center shadow-[0_18px_35px_rgba(0,0,0,0.22)] rounded-[30px]"
           style={{
-            backgroundImage: "url('/ramadan1.jpeg')",
+            backgroundImage: "url('https://i.ibb.co/Kjc5gBRH/ramadan1.jpg')",
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -132,7 +132,7 @@ export default function QuranWirdList() {
                      onClick={() => navigate(`/Quran/${wird.id}`, { state: wird })}
                       className="relative w-full flex items-center justify-between p-5 rounded-[26px] shadow-[0_12px_28px_rgba(0,0,0,0.14)] transition active:scale-[0.98]"
                       style={{
-                        backgroundImage: "url('/werd card.png')",
+                        backgroundImage: "url(https://i.ibb.co/1GxY6s6R/werd-card.png)",
                         backgroundSize: "cover",
                         backgroundPosition: "center",
                       }}

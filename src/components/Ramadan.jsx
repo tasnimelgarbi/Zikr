@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Clock3, ChevronLeft, ChevronRight } from "lucide-react";
-import bg from "/ramdan card.png";
 import BackButton from "./BackButton.jsx";
 import Footer from "./Footer.jsx";
 
 export default function RamadanDashboard({
   titel = "لوحة تحكم رمضان",
 }){
+
+  const bg = "https://i.ibb.co/vxdkLmLZ/ramdan-card.jpg";
 const [ramadanStartFajr, setRamadanStartFajr] = useState(null);
 const [ramadanDays, setRamadanDays] = useState([]);
 const [activeDay, setActiveDay] = useState(null);
@@ -18,26 +19,67 @@ const [countdown, setCountdown] = useState("--:--:--");
 const [nextPrayerText, setNextPrayerText] = useState("");
 
 useEffect(() => {
-    const city = localStorage.getItem("city") || "Cairo";
-    fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`)
-      .then(res => res.json())
-    .then(data => {
-      const timings = data.data.timings;
-      const hijri = data.data.date.hijri;
+  const lat = localStorage.getItem("lat");
+  const lng = localStorage.getItem("lng");
+  const city = localStorage.getItem("city") || "Cairo";
+  const method = 5;
+  const school = 0;
 
-      setIftar(timings.Maghrib);
-      setImsak(timings.Fajr);
+  // ✅ كاش ذكي: التاريخ + مصدر البيانات + الإعدادات
+  const sourceKey =
+    lat && lng ? `gps-${lat}-${lng}` : `city-${encodeURIComponent(city)}`;
+  const todayKey = `ramadan-info-${new Date().toDateString()}-${sourceKey}-m${method}-s${school}`;
 
-      if (hijri.month.en === "Ramadan") {
-        setIsRamadan(true);
-        setActiveDay(Number(hijri.day));
-        setDayText(`اليوم ${hijri.day} من رمضان`);
-      } else {
-        setIsRamadan(false);
-        setActiveDay(null);
-        setDayText("اليوم 0 من رمضان");
-      }
+  const cached = localStorage.getItem(todayKey);
+  if (cached) {
+    try {
+      const { timings, hijri } = JSON.parse(cached);
+      applyData(timings, hijri);
+      return;
+    } catch {}
+  }
+  let url;
+  if (lat && lng) {
+    url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=${method}&school=${school}`;
+  } else {
+    url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(
+      city
+    )}&country=Egypt&method=${method}&school=${school}`;
+  }
+
+  fetch(url)
+    .then((res) => res.json())
+    .then((data) => {
+      const timings = data?.data?.timings;
+      const hijri = data?.data?.date?.hijri;
+      if (!timings || !hijri) return;
+
+      localStorage.setItem(todayKey, JSON.stringify({ timings, hijri }));
+      applyData(timings, hijri);
+    })
+    .catch((err) => {
+      console.error("Prayer API Error:", err);
     });
+
+  function applyData(timings, hijri) {
+    const cleanTime = (t) => String(t || "").split(" ")[0];
+
+    setIftar(cleanTime(timings.Maghrib));
+    setImsak(cleanTime(timings.Imsak || timings.Fajr));
+
+    const monthEn = String(hijri?.month?.en || "").toLowerCase();
+    const isRamadan = monthEn.includes("ram");
+
+    if (isRamadan) {
+      setIsRamadan(true);
+      setActiveDay(Number(hijri.day));
+      setDayText(`اليوم ${hijri.day} من رمضان`);
+    } else {
+      setIsRamadan(false);
+      setActiveDay(null);
+      setDayText("اليوم 0 من رمضان");
+    }
+  }
 }, []);
 
 useEffect(() => {
@@ -154,7 +196,7 @@ return (
           <div
             className="absolute inset-0 rounded-b-[80px] opacity-30 pointer-events-none"
             style={{
-              backgroundImage: "url('/full bg azskar.jpeg')",
+              backgroundImage: "url('https://i.ibb.co/S4jrZt90/full-bg-azskar.jpg')",
               backgroundRepeat: "repeat",
               mixBlendMode: "multiply",
             }}
@@ -370,7 +412,7 @@ return (
       {/* ================= backgroung ================= */}
       <div
         className="h-96 bg-no-repeat bg-cover rounded-b-2xl"
-        style={{ backgroundImage: "url('/ramadan1.jpeg')" }}
+        style={{ backgroundImage: "url('https://i.ibb.co/Kjc5gBRH/ramadan1.jpg')" }}
       ></div>
     </div>
     </div>

@@ -1,9 +1,7 @@
-import React from "react";
-import bg from "/werd card.png"; // عدّل المسار حسب مكان الملف
-
 export default function DailyWirdCard() {
   const title = "الورد اليومي من القرآن";
   const progress = 0.82; // 0..1
+  const bg = "https://i.ibb.co/1GxY6s6R/werd-card.png";
 
   // Progress circle math
   const size = 54; // قريب من الشكل في التصميم

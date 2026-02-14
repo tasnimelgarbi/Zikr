@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import panelBg from "/werd card.png";
 import BackButton from "./BackButton.jsx";
 import Footer from "./Footer.jsx";
 
 export default function PrayerTimesCard() {
+    const panelBg = "https://i.ibb.co/1GxY6s6R/werd-card.png";
   const icon = {
     fajr: "https://cdn-icons-png.flaticon.com/512/6796/6796223.png",
     sunrise: "https://cdn-icons-png.flaticon.com/512/6796/6796223.png",
@@ -20,13 +20,42 @@ export default function PrayerTimesCard() {
   const [activeKey, setActiveKey] = useState(null);
 
   useEffect(() => {
-  const city = localStorage.getItem("city") || "Cairo";
-  fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`)
-  .then(res => res.json())
-      .then(data => {
-        setTimes(data.data.timings);
-      });
-  }, []);
+  const todayKey = `prayer-times-${new Date().toDateString()}`;
+
+  const cached = localStorage.getItem(todayKey);
+  if (cached) {
+    setTimes(JSON.parse(cached));
+    return;
+  }
+
+  const lat = localStorage.getItem("lat");
+  const lng = localStorage.getItem("lng");
+
+  let url;
+
+  if (lat && lng) {
+    // ✅ الأدق (GPS أو إحداثيات محفوظة)
+    url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=5`;
+  } else {
+    // fallback
+    const city = localStorage.getItem("city") || "Cairo";
+    url = `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`;
+  }
+
+  fetch(url)
+    .then((res) => res.json())
+    .then((data) => {
+      const timings = data?.data?.timings;
+
+      if (timings) {
+        setTimes(timings);
+        localStorage.setItem(todayKey, JSON.stringify(timings));
+      }
+    })
+    .catch((err) => {
+      console.error("Prayer API Error:", err);
+    });
+}, []);
 
   useEffect(() => {
     if (!times) return;
@@ -156,7 +185,7 @@ function PrayerRow({ label, time, iconUrl, iconBg, textColor, isActive, hasGoldB
     >
       {/* الخلفية */}
       <img
-        src="/werd card.png"
+        src="https://i.ibb.co/1GxY6s6R/werd-card.png"
         alt={label}
         className="w-full h-full object-cover"
         draggable="false"

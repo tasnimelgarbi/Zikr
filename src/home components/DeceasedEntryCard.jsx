@@ -1,12 +1,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import bg from "/werd card.png";
 
 export default function DeceasedEntryCard() {
   const navigate = useNavigate();
 
   const title = "اذكروا محاسن موتاكم";
   const subtitle = "لعل دعوة صادقة ترفع درجاتهم";
+  const bg = "https://i.ibb.co/1GxY6s6R/werd-card.png";
 
   return (
     <section dir="rtl" className="w-full">

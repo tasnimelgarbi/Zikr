@@ -13,75 +13,121 @@ export default function Header({
   const [nextPrayerText, setNextPrayerText] = useState("");
   
   //countdown logic
-  useEffect(() => {
-    let prayersArray = [];
+ useEffect(() => {
+  let prayersArray = [];
+  let intervalId = null;
 
-      const fetchTimings = async () => {
-      try {
-        const city = localStorage.getItem("city") || "Cairo";
+  const fetchTimings = async () => {
+    try {
+      const rawLat = localStorage.getItem("lat");
+      const rawLng = localStorage.getItem("lng");
+      const city = localStorage.getItem("city") || "Cairo";
 
-        const res = await fetch(
-          `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`
-        );
-        const data = await res.json();
-        const timings = data.data.timings;
+      const method = 5;
+      const school = 0;
 
+      const lat = rawLat ? Number(rawLat).toFixed(4) : null;
+      const lng = rawLng ? Number(rawLng).toFixed(4) : null;
+
+      const sourceKey =
+        lat && lng ? `gps-${lat}-${lng}` : `city-${encodeURIComponent(city)}`;
+
+      const todayKey = `countdown-timings-${new Date().toDateString()}-${sourceKey}-m${method}-s${school}`;
+
+      const cleanTime = (t) => String(t || "").split(" ")[0]; // "05:12 (EET)" -> "05:12"
+
+      // ✅ كاش
+      const cached = localStorage.getItem(todayKey);
+      if (cached) {
+        const timings = JSON.parse(cached);
+        setTimingsAndStart(timings);
+        return;
+      }
+
+      // ✅ URL حسب GPS أو city
+      let url;
+      if (lat && lng) {
+        url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=${method}&school=${school}`;
+      } else {
+        url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(
+          city
+        )}&country=Egypt&method=${method}&school=${school}`;
+      }
+
+      const res = await fetch(url);
+      const data = await res.json();
+      const timings = data?.data?.timings;
+      if (!timings) return;
+
+      localStorage.setItem(todayKey, JSON.stringify(timings));
+      setTimingsAndStart(timings);
+
+      function setTimingsAndStart(timings) {
         prayersArray = [
-          { name: "الفجر", time: timings.Fajr },
-          { name: "الشروق", time: timings.Sunrise },
-          { name: "الظهر", time: timings.Dhuhr },
-          { name: "العصر", time: timings.Asr },
-          { name: "المغرب", time: timings.Maghrib },
-          { name: "العشاء", time: timings.Isha },
+          { name: "الفجر", time: cleanTime(timings.Fajr) },
+          { name: "الشروق", time: cleanTime(timings.Sunrise) },
+          { name: "الظهر", time: cleanTime(timings.Dhuhr) },
+          { name: "العصر", time: cleanTime(timings.Asr) },
+          { name: "المغرب", time: cleanTime(timings.Maghrib) },
+          { name: "العشاء", time: cleanTime(timings.Isha) },
         ];
 
-        updateCountdown(); // أول مرة
-   
-      } catch (err) {
-        console.log("Error fetching timings:", err);
-      }
-    };
+        updateCountdown(); // أول مرة بعد ما القائمة تتعبّي
 
-    const updateCountdown = () => {
-      const now = new Date();
-      let nextPrayer = null;
-
-      for (let p of prayersArray) {
-        const [h, m] = p.time.split(":").map(Number);
-        const pDate = new Date();
-        pDate.setHours(h, m, 0, 0);
-
-        if (pDate > now) {
-          nextPrayer = { ...p, date: pDate };
-          break;
+        // ابدأ العداد بعد ما جه timings (علشان ميبقاش فيه ثانية فاضية)
+        if (!intervalId) {
+          intervalId = setInterval(updateCountdown, 1000);
         }
       }
+    } catch (err) {
+      console.log("Error fetching timings:", err);
+    }
+  };
 
-      if (!nextPrayer) {
-        const [h, m] = prayersArray[0].time.split(":").map(Number);
-        const pDate = new Date();
-        pDate.setDate(pDate.getDate() + 1);
-        pDate.setHours(h, m, 0, 0);
-        nextPrayer = { ...prayersArray[0], date: pDate };
+  const updateCountdown = () => {
+    if (!prayersArray.length) return;
+
+    const now = new Date();
+    let nextPrayer = null;
+
+    for (let p of prayersArray) {
+      const [h, m] = p.time.split(":").map(Number);
+      const pDate = new Date();
+      pDate.setHours(h, m, 0, 0);
+
+      if (pDate > now) {
+        nextPrayer = { ...p, date: pDate };
+        break;
       }
+    }
 
-      const diff = Math.max(0, nextPrayer.date - now);
-      const hours = Math.floor(diff / 1000 / 3600);
-      const minutes = Math.floor((diff / 1000 % 3600) / 60);
-      const seconds = Math.floor(diff / 1000 % 60);
+    if (!nextPrayer) {
+      const [h, m] = prayersArray[0].time.split(":").map(Number);
+      const pDate = new Date();
+      pDate.setDate(pDate.getDate() + 1);
+      pDate.setHours(h, m, 0, 0);
+      nextPrayer = { ...prayersArray[0], date: pDate };
+    }
 
-      setCountdown(
-        `${hours.toString().padStart(2, "0")}:${minutes
-          .toString()
-          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-      );
-      setNextPrayerText(`متبقي على صلاة ${nextPrayer.name}`);
-    };
+    const diff = Math.max(0, nextPrayer.date - now);
+    const hours = Math.floor(diff / 1000 / 3600);
+    const minutes = Math.floor((diff / 1000 % 3600) / 60);
+    const seconds = Math.floor(diff / 1000 % 60);
 
-    fetchTimings();
-    const interval = setInterval(updateCountdown, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    setCountdown(
+      `${hours.toString().padStart(2, "0")}:${minutes
+        .toString()
+        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+    );
+    setNextPrayerText(`متبقي على صلاة ${nextPrayer.name}`);
+  };
+
+  fetchTimings();
+
+  return () => {
+    if (intervalId) clearInterval(intervalId);
+  };
+}, []);
 
   // Hijri date logic
   useEffect(() => {

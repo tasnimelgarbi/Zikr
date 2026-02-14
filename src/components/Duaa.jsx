@@ -74,7 +74,7 @@ function ShareCard({ dua, idx }) {
             {/* ✅ لوجو الموقع (public/logo.png) */}
             <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-[#D7B266] shadow-[0_18px_50px_rgba(0,0,0,0.15)] bg-white">
               <img
-                src="/logo.png"
+                src="https://i.ibb.co/jZMtLmJG/logo.png"
                 crossOrigin="anonymous"
                 alt="logo"
                 className="h-full w-full object-cover"

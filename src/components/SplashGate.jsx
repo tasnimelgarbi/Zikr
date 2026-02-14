@@ -5,14 +5,17 @@ import CitySelector from "./CitySelector";
 /* =========================
    الصور (لو في public/)
    ========================= */
-import introBg from "/intro.png";      // خلفية الشارع المصري
-import zekrLogo from "/logo.png";      // لوجو ذِكْر المدور
-import cityBg from "/city-bg.png";     // ✅ الخلفية اللي عملتهالك (حطها في public)
+// import introBg from "/intro.png";      // خلفية الشارع المصري
+// import zekrLogo from "/logo.png";      // لوجو ذِكْر المدور
+// import cityBg from "/city-bg.png";     // ✅ الخلفية اللي عملتهالك (حطها في public)
 
 /* =========================
    إعدادات
    ========================= */
 const MIN_INTRO_MS = 2000;
+const introBg = "https://i.ibb.co/39P5zTkJ/intro.png";
+const cityBg = "https://i.ibb.co/hxnhwGjr/city-bg.png";
+const zekrLogo = "https://i.ibb.co/jZMtLmJG/logo.png";
 
 /* ========================= */
 function shouldShowIntroToday() {

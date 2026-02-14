@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import panelBg from "/bg azkar.png";
-import tasbihImg from "/sebha.png";
-import bg from "/full bg azskar.jpeg";
 import BackButton from "./BackButton.jsx";
 import Footer from "./Footer.jsx";
 
@@ -64,6 +62,9 @@ const AZKAR = {
 
 /* ================= COMPONENT ================= */
 export default function AzkarApp() {
+  const tasbihImg = "https://i.ibb.co/9km9cKj2/sebha.png";
+  const bg = "https://i.ibb.co/7dbPtvSd/bg-azkar.jpg";
+  
   const [type, setType] = useState("morning");
   const [zekrIndex, setZekrIndex] = useState(0);
   const [count, setCount] = useState(0);

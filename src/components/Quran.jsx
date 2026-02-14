@@ -118,7 +118,7 @@ React.useEffect(() => {
       {/* Page */}
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Card */}
-        <div className="bg-[url('/quran.png')] border border-zinc-200 rounded-3xl shadow-sm">
+        <div className="bg-[url('https://i.ibb.co/pvQmtYVM/quran.jpg')] border border-zinc-200 rounded-3xl shadow-sm">
           <div className="px-5 sm:px-8 py-6 sm:py-8">
             {grouped.map(([surahName, ayahs], idx) => (
               <section key={`${surahName}-${idx}`} className={idx ? "mt-10" : ""}>

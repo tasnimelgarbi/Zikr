@@ -166,7 +166,7 @@ export default function DailyWirdTracker() {
           <div
             className="absolute inset-0 rounded-b-[80px] opacity-30 pointer-events-none"
             style={{
-              backgroundImage: "url('/full bg azskar.jpeg')",
+              backgroundImage: "url('https://i.ibb.co/S4jrZt90/full-bg-azskar.jpg')",
               backgroundRepeat: "repeat",
               mixBlendMode: "multiply",
             }}
