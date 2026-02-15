@@ -127,7 +127,7 @@ export default function AzkarApp() {
         <div
           className="relative rounded-[32px] shadow-lg p-6"
           style={{
-            backgroundImage: `url(${panelBg})`,
+            backgroundImage: `url(${bg})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
