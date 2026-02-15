@@ -2,6 +2,26 @@ import React, { useState, useEffect } from "react";
 import IconButton from "@mui/material/IconButton";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 
+const clearPrayerCaches = () => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const ls = window.localStorage;
+    const prefixes = ["countdown-timings-", "prayer-times-", "imsak-iftar-"];
+
+    for (let i = ls.length - 1; i >= 0; i--) {
+      const k = ls.key(i);
+      if (!k) continue;
+
+      if (prefixes.some((p) => k.startsWith(p))) {
+        ls.removeItem(k);
+      }
+    }
+  } catch (e) {
+    console.warn("localStorage not available, skipping cache clear.");
+  }
+};
+
 export default function Header({
   onCalendar,
 }) {
@@ -178,15 +198,23 @@ export default function Header({
   return (
     <header className="w-full">
       {/* زر تغيير المدينة */}
-      <button
+          <button
         onClick={() => {
           localStorage.removeItem("city");
           localStorage.removeItem("city_ar");
+
+          // ✅ مهم جدًا لو كنت استخدمت GPS قبل كده
+          localStorage.removeItem("lat");
+          localStorage.removeItem("lng");
+
+          // ✅ امسح كاش الصلوات لليوم (اختياري بس يخلي التغيير يظهر فورًا)
+          clearPrayerCaches();
+
           window.location.reload();
         }}
         className="absolute top-5 left-3 px-2 py-2 font-bold text-white rounded-full shadow-lg z-50"
         style={{
-          background:"linear-gradient(180deg, #D7B266 0%, #C89B4B 45%, #B98636 100%)", 
+          background:"linear-gradient(180deg, #D7B266 0%, #C89B4B 45%, #B98636 100%)",
           border: "2px solid #E7C87A",
           boxShadow: "0 6px 15px rgba(0,0,0,0.25)",
         }}

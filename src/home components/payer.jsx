@@ -24,8 +24,25 @@ function PrayerIconImg({ name }) {
 export default function PrayerTimes() {
   const [prayers, setPrayers] = useState([]);
 
-    useEffect(() => {
-      const todayKey = `prayer-times-${new Date().toDateString()}`;
+useEffect(() => {
+  const fetchTimings = async () => {
+    try {
+      const rawLat = localStorage.getItem("lat");
+      const rawLng = localStorage.getItem("lng");
+      const city = localStorage.getItem("city") || "Cairo";
+
+      const method = 5;
+      const school = 0;
+
+      const lat = rawLat ? Number(rawLat).toFixed(4) : null;
+      const lng = rawLng ? Number(rawLng).toFixed(4) : null;
+
+      const sourceKey =
+        lat && lng ? `gps-${lat}-${lng}` : `city-${encodeURIComponent(city)}`;
+
+      const todayKey = `prayer-times-${new Date().toDateString()}-${sourceKey}-m${method}-s${school}`;
+
+      const cleanTime = (t) => String(t || "").split(" ")[0];
 
       const cached = localStorage.getItem(todayKey);
       if (cached) {
@@ -34,33 +51,24 @@ export default function PrayerTimes() {
         return;
       }
 
-      const lat = localStorage.getItem("lat");
-      const lng = localStorage.getItem("lng");
-
       let url;
       if (lat && lng) {
-        url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=5`;
+        url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=${method}&school=${school}`;
       } else {
-        const city = localStorage.getItem("city") || "Cairo";
-        url = `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=Egypt&method=5`;
+        url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(
+          city
+        )}&country=Egypt&method=${method}&school=${school}`;
       }
 
-      fetch(url)
-        .then((res) => res.json())
-        .then((data) => {
-          const timings = data?.data?.timings;
-          if (!timings) return;
+      const res = await fetch(url);
+      const data = await res.json();
+      const timings = data?.data?.timings;
+      if (!timings) return;
 
-          localStorage.setItem(todayKey, JSON.stringify(timings));
-          buildAndSetPrayers(timings);
-        })
-        .catch((err) => {
-          console.error("Prayer API Error:", err);
-        });
+      localStorage.setItem(todayKey, JSON.stringify(timings));
+      buildAndSetPrayers(timings);
 
       function buildAndSetPrayers(timings) {
-        const cleanTime = (t) => String(t || "").split(" ")[0]; // "05:12 (EET)" -> "05:12"
-
         const formatTime = (time24) => {
           const [h, m] = cleanTime(time24).split(":").map(Number);
           const period = h >= 12 ? "م" : "ص";
@@ -78,14 +86,13 @@ export default function PrayerTimes() {
           { name: "العشاء", time: formatTime(timings.Isha), rawTime: cleanTime(timings.Isha), icon: "isha" },
         ];
 
-        // تحديد الصلاة القادمة ديناميكي (زي كودك)
         const now = new Date();
         let foundActive = false;
 
         prayersArray.forEach((p) => {
           const [hour, minute] = p.rawTime.split(":").map(Number);
           const pDate = new Date();
-          pDate.setHours(hour, minute, 0);
+          pDate.setHours(hour, minute, 0, 0);
 
           if (!foundActive && pDate > now) {
             p.active = true;
@@ -99,7 +106,14 @@ export default function PrayerTimes() {
 
         setPrayers(prayersArray);
       }
-    }, []);
+    } catch (err) {
+      console.error("Prayer API Error:", err);
+    }
+  };
+
+  fetchTimings();
+}, []);
+
 
   return (
     <section dir="rtl" className="w-full overflow-x-hidden rounded-2xl p-3 mt-6">

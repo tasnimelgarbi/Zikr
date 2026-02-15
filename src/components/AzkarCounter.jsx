@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import panelBg from "/bg azkar.png";
 import BackButton from "./BackButton.jsx";
 import Footer from "./Footer.jsx";
 
