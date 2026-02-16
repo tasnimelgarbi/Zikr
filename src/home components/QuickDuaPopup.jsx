@@ -17,16 +17,20 @@ async function dataUrlToFile(dataUrl, fileName = "zekr.png") {
 // ✅ preload + decode (مهم جدًا للموبايل)
 async function preloadAndDecode(url) {
   const img = new Image();
+  img.crossOrigin = "anonymous";
   img.src = url;
+
   if (!img.complete) {
     await new Promise((res) => {
       img.onload = res;
       img.onerror = res;
     });
   }
+
   try {
     if (img.decode) await img.decode();
   } catch {}
+
   return true;
 }
 
@@ -46,6 +50,7 @@ function ShareCard({ item, bgUrl, logoUrl }) {
         alt="bg"
         className="absolute inset-0 w-full h-full object-cover"
         draggable="false"
+        crossOrigin="anonymous"
       />
       <div className="absolute inset-0 bg-black/60" />
 
@@ -58,6 +63,7 @@ function ShareCard({ item, bgUrl, logoUrl }) {
                 alt="logo"
                 className="h-full w-full object-cover"
                 draggable="false"
+                crossOrigin="anonymous"
               />
             </div>
 
@@ -110,8 +116,7 @@ export default function QuickDuaPopup({ open, onClose }) {
   const [sharing, setSharing] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
 
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
   const bgUrl = `${origin}/duaa.png`;
   const logoUrl = `${origin}/logo.png`;
 
@@ -128,7 +133,7 @@ export default function QuickDuaPopup({ open, onClose }) {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // ✅ أهم حاجة: preload assets أول ما يفتح البوباب
+    // ✅ أهم حاجة: preload assets + fonts أول ما يفتح البوباب
     setAssetsReady(false);
     (async () => {
       try {
@@ -137,6 +142,11 @@ export default function QuickDuaPopup({ open, onClose }) {
           preloadAndDecode(logoUrl),
           document.fonts?.ready ?? Promise.resolve(),
         ]);
+
+        // ✅ خلي فيه frame عشان Safari يرسم الخلفية فعلاً
+        await new Promise((r) => requestAnimationFrame(r));
+        await new Promise((r) => requestAnimationFrame(r));
+
         setAssetsReady(true);
       } catch {
         setAssetsReady(true); // حتى لو فشل، ما نعلقش
@@ -158,25 +168,30 @@ export default function QuickDuaPopup({ open, onClose }) {
     else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
   };
 
+  // ✅ أهم تعديل: ممنوع يبدأ شير الصورة إلا لما تجهز + منع الدبل كليك
   const shareAsImage = async () => {
     if (!item) return;
+    if (sharing) return; // ✅ منع الضغط السريع/المتكرر
 
     try {
       setSharing(true);
+
+      // ✅ استنى الفونت يخلص تحميل (مهم جدًا)
+      await (document.fonts?.ready ?? Promise.resolve());
 
       // ✅ لو لسه الصور ما جهزتش، استنى
       if (!assetsReady) {
         await Promise.all([preloadAndDecode(bgUrl), preloadAndDecode(logoUrl)]);
       }
 
-      // خلي رندر يثبت
+      // ✅ خلي رندر يثبت (Safari محتاج frame زيادة)
       await new Promise((r) => requestAnimationFrame(r));
       await new Promise((r) => requestAnimationFrame(r));
 
       const node = document.getElementById("quick-share-card");
       if (!node) throw new Error("Share card not found");
 
-      // استنى صور الكارت نفسها
+      // ✅ استنى صور الكارت نفسها (bg + logo) — ضمان إضافي
       const imgs = Array.from(node.querySelectorAll("img"));
       await Promise.all(
         imgs.map(async (img) => {
@@ -215,7 +230,10 @@ export default function QuickDuaPopup({ open, onClose }) {
         return;
       }
 
-      window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText(item))}`);
+      // fallback
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(buildShareText(item))}`
+      );
     } catch (e) {
       console.error(e);
     } finally {
@@ -230,7 +248,10 @@ export default function QuickDuaPopup({ open, onClose }) {
       <ShareCard item={item} bgUrl={bgUrl} logoUrl={logoUrl} />
 
       <div className="fixed inset-0 z-[999999] flex items-center justify-center px-4">
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        />
 
         <div className="relative w-[92%] max-w-md overflow-hidden rounded-3xl border border-black/10 bg-white/90 shadow-[0_22px_70px_rgba(0,0,0,.25)]">
           <button
@@ -270,7 +291,10 @@ export default function QuickDuaPopup({ open, onClose }) {
               <button
                 onClick={share}
                 className="rounded-2xl py-3 text-white font-extrabold shadow-sm"
-                style={{ background: "linear-gradient(180deg,#D7B266,#C89B4B,#B98636)" }}
+                style={{
+                  background:
+                    "linear-gradient(180deg,#D7B266,#C89B4B,#B98636)",
+                }}
               >
                 <Share2 className="inline w-4 h-4 ml-1" /> شير
               </button>
@@ -278,10 +302,11 @@ export default function QuickDuaPopup({ open, onClose }) {
               <button
                 onClick={shareAsImage}
                 disabled={sharing || !assetsReady}
-                className="rounded-2xl py-3 border border-black/10 bg-white font-extrabold shadow-sm disabled:opacity-60"
+                className="rounded-2xl py-3 border border-black/10 bg-white font-extrabold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                aria-busy={sharing ? "true" : "false"}
               >
                 <ImageIcon className="inline w-4 h-4 ml-1" />{" "}
-                {sharing ? "..." : assetsReady ? "صورة" : "..."}
+                {sharing ? "جاري..." : assetsReady ? "صورة" : "..."}
               </button>
             </div>
 
