@@ -49,7 +49,6 @@ export default function DailyWirdTracker() {
         localStorage.setItem(flagKey, "1");
       }
     } else {
-      // لو قلّت عن 100% لأي سبب (unset) نخليها ممكن تظهر تاني عند 100%
       localStorage.removeItem("quran-wirds-congrats-shown");
     }
   }, [progress]);
@@ -72,7 +71,8 @@ export default function DailyWirdTracker() {
                 className="absolute top-[-10px] w-2 h-4 rounded-sm opacity-80 animate-[confetti_2.8s_linear_infinite]"
                 style={{
                   left: `${(i * 100) / 28}%`,
-                  background: i % 3 === 0 ? "#D7B266" : i % 3 === 1 ? "#9fc7b2" : "#C89B4B",
+                  background:
+                    i % 3 === 0 ? "#D7B266" : i % 3 === 1 ? "#9fc7b2" : "#C89B4B",
                   animationDelay: `${i * 0.06}s`,
                   transform: `rotate(${i * 12}deg)`,
                 }}
@@ -111,7 +111,8 @@ export default function DailyWirdTracker() {
                 </div>
 
                 <div className="mt-3 text-[15px] font-semibold text-zinc-700">
-                  كملت الورد بالكامل بنسبة <span className="text-amber-800 font-extrabold">100%</span>
+                  كملت الورد بالكامل بنسبة{" "}
+                  <span className="text-amber-800 font-extrabold">100%</span>
                 </div>
               </div>
 
@@ -147,9 +148,10 @@ export default function DailyWirdTracker() {
         </>
       )}
 
+      {/* ===== ديكورات تحت (لازم ما تبلعش اللمس) ===== */}
       {/* الإطار */}
       <div
-        className="absolute inset-[6px] rounded-[22px]"
+        className="pointer-events-none absolute inset-[6px] rounded-[22px] z-0"
         style={{
           border: "2px solid rgba(184, 134, 11, 0.6)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.10)",
@@ -160,132 +162,138 @@ export default function DailyWirdTracker() {
         }}
       />
 
-      {/* HEADER */}
-      <header className="w-full">
-        <div className="relative w-full h-[120px] overflow-visible rounded-b-[80px] bg-[#8dcba1c2] px-3 pt-6">
-          <div
-            className="absolute inset-0 rounded-b-[80px] opacity-30 pointer-events-none"
-            style={{
-              backgroundImage: "url('https://i.ibb.co/S4jrZt90/full-bg-azskar.jpg')",
-              backgroundRepeat: "repeat",
-              mixBlendMode: "multiply",
-            }}
-          />
-          <div className="pointer-events-none absolute inset-0 opacity-70">
-            <div className="absolute -top-10 -left-10 h-44 w-44 rounded-full bg-white/25 blur-2xl" />
-            <div className="absolute -top-14 right-0 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-          </div>
-        </div>
-      </header>
-        <div className="absolute right-4 top-3 z-20">
-      <BackButton />
-    </div>
-      {/* TITLE CARD */}
-      <div className="w-full flex justify-center -mt-16 px-4 relative z-20">
-        <div
-          className="w-full max-w-md h-[90px] rounded-[30px] flex items-center justify-center shadow-[0_18px_35px_rgba(0,0,0,0.22)]"
-          style={{
-            background:
-              "linear-gradient(180deg, #FFFFFF 0%, #F2F2F2 45%, #E6E6E6 100%)",
-          }}
-        >
-          <span className="text-[30px] font-extrabold text-[#1F1F1F]">
-            الوِرد القرآني اليومي
-          </span>
-        </div>
-      </div>
+      {/* BACKGROUND BLOBS (دي كانت بتبلع الضغط أحيانًا) */}
+      <div className="pointer-events-none absolute top-10 right-10 z-0 w-32 h-32 bg-emerald-200/30 rounded-full blur-3xl" />
+      <div className="pointer-events-none absolute bottom-10 left-10 z-0 w-40 h-40 bg-amber-200/30 rounded-full blur-3xl" />
 
-      {/* CONTENT */}
-      <div className="w-full flex justify-center mt-6 px-4">
-        <div className="w-full max-w-md">
+      {/* ===== محتوى الصفحة كله فوق الديكورات ===== */}
+      <div className="relative z-10">
+        {/* HEADER */}
+        <header className="w-full">
+          <div className="relative w-full h-[120px] overflow-visible rounded-b-[80px] bg-[#8dcba1c2] px-3 pt-6">
+            <div
+              className="absolute inset-0 rounded-b-[80px] opacity-30 pointer-events-none"
+              style={{
+                backgroundImage: "url('https://i.ibb.co/S4jrZt90/full-bg-azskar.jpg')",
+                backgroundRepeat: "repeat",
+                mixBlendMode: "multiply",
+              }}
+            />
+            <div className="pointer-events-none absolute inset-0 opacity-70">
+              <div className="absolute -top-10 -left-10 h-44 w-44 rounded-full bg-white/25 blur-2xl" />
+              <div className="absolute -top-14 right-0 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
+            </div>
+          </div>
+        </header>
+
+        <div className="absolute right-4 top-3 z-20">
+          <BackButton />
+        </div>
+
+        {/* TITLE CARD */}
+        <div className="w-full flex justify-center -mt-16 px-4 relative z-20">
           <div
-            className="relative rounded-[32px] px-8 pt-10 pb-8 shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
+            className="w-full max-w-md h-[90px] rounded-[30px] flex items-center justify-center shadow-[0_18px_35px_rgba(0,0,0,0.22)]"
             style={{
               background:
-                "linear-gradient(180deg, #FFFFFF 0%, #F6F3EA 45%, #EEE7D6 100%)",
+                "linear-gradient(180deg, #FFFFFF 0%, #F2F2F2 45%, #E6E6E6 100%)",
             }}
           >
-            {/* Circular Progress */}
-            <div className="flex justify-center mb-8">
-              <div className="relative w-48 h-48">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle
-                    cx="96"
-                    cy="96"
-                    r={r}
-                    stroke="#e5e7eb"
-                    strokeWidth="12"
-                    fill="none"
-                  />
-                  <circle
-                    cx="96"
-                    cy="96"
-                    r={r}
-                    stroke="#C89B4B"
-                    strokeWidth="12"
-                    fill="none"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={dashOffset}
-                    strokeLinecap="round"
-                    className="transition-all duration-700 ease-out"
-                  />
-                </svg>
-
-                {/* Percentage */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span
-                    className="text-[48px] font-extrabold"
-                    style={{
-                      background:
-                        "linear-gradient(180deg, #D7B266 0%, #C89B4B 50%, #B98636 100%)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                    dir="ltr"
-                  >
-                    {progress}%
-                  </span>
-                  <span className="text-[18px] font-semibold text-[#6B6B6B]">
-                    مكتمل
-                  </span>
-                  <span className="mt-1 text-[13px] font-semibold text-zinc-500">
-                    {completedCount} / {TOTAL_WIRDS} ورد
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Wird Info */}
-            <div className="text-center mb-8">
-              <div className="text-[24px] font-extrabold text-[#2E2E2E] mb-1">
-                تقدمك الحالي
-              </div>
-              <div className="text-[18px] font-semibold text-[#6B6B6B]">
-                كل ما تكمّل ورد (✔) النسبة بتزيد
-              </div>
-            </div>
-
-            {/* Action Button */}
-            <button
-              onClick={() => navigate("/werd-quran")}
-              className="w-full py-5 rounded-full text-[22px] font-extrabold text-white
-                         shadow-[0_10px_25px_rgba(0,0,0,0.25)]
-                         active:scale-95 transition"
-              style={{
-                background:
-                  "linear-gradient(180deg, #D7B266 0%, #C89B4B 50%, #B98636 100%)",
-              }}
-            >
-              ابدأ الورد
-            </button>
+            <span className="text-[30px] font-extrabold text-[#1F1F1F]">
+              الوِرد القرآني اليومي
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* BACKGROUND BLOBS */}
-      <div className="absolute top-10 right-10 w-32 h-32 bg-emerald-200/30 rounded-full blur-3xl" />
-      <div className="absolute bottom-10 left-10 w-40 h-40 bg-amber-200/30 rounded-full blur-3xl" />
-    <Footer />
+        {/* CONTENT */}
+        <div className="w-full flex justify-center mt-6 px-4">
+          <div className="w-full max-w-md">
+            <div
+              className="relative rounded-[32px] px-8 pt-10 pb-8 shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
+              style={{
+                background:
+                  "linear-gradient(180deg, #FFFFFF 0%, #F6F3EA 45%, #EEE7D6 100%)",
+              }}
+            >
+              {/* Circular Progress */}
+              <div className="flex justify-center mb-8">
+                <div className="relative w-48 h-48">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r={r}
+                      stroke="#e5e7eb"
+                      strokeWidth="12"
+                      fill="none"
+                    />
+                    <circle
+                      cx="96"
+                      cy="96"
+                      r={r}
+                      stroke="#C89B4B"
+                      strokeWidth="12"
+                      fill="none"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={dashOffset}
+                      strokeLinecap="round"
+                      className="transition-all duration-700 ease-out"
+                    />
+                  </svg>
+
+                  {/* Percentage */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span
+                      className="text-[48px] font-extrabold"
+                      style={{
+                        background:
+                          "linear-gradient(180deg, #D7B266 0%, #C89B4B 50%, #B98636 100%)",
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                      }}
+                      dir="ltr"
+                    >
+                      {progress}%
+                    </span>
+                    <span className="text-[18px] font-semibold text-[#6B6B6B]">
+                      مكتمل
+                    </span>
+                    <span className="mt-1 text-[13px] font-semibold text-zinc-500">
+                      {completedCount} / {TOTAL_WIRDS} ورد
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Wird Info */}
+              <div className="text-center mb-8">
+                <div className="text-[24px] font-extrabold text-[#2E2E2E] mb-1">
+                  تقدمك الحالي
+                </div>
+                <div className="text-[18px] font-semibold text-[#6B6B6B]">
+                  كل ما تكمّل ورد (✔) النسبة بتزيد
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => navigate("/werd-quran")}
+                className="relative z-20 w-full py-5 rounded-full text-[22px] font-extrabold text-white
+                           shadow-[0_10px_25px_rgba(0,0,0,0.25)]
+                           active:scale-95 transition"
+                style={{
+                  background:
+                    "linear-gradient(180deg, #D7B266 0%, #C89B4B 50%, #B98636 100%)",
+                }}
+              >
+                ابدأ الورد
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
     </div>
   );
 }

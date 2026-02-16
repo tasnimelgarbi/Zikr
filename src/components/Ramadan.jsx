@@ -293,9 +293,9 @@ return (
       </header>
 
       {/* ================= CARDS ================= */}
-      <div dir="ltr" className="flex items-center mt-4 mb-4 mx-7 justify-between">
+    <div dir="rtl" className="mt-4 mb-4 flex justify-center gap-3 px-3">
       {/* Card 1 */}
-      <div className="flex items-center justify-between bg-[#F7F7F1] rounded-[22px] px-4 py-3 min-w-[160px] shadow-md">
+      <div className="flex items-center justify-between bg-[#F7F7F1] rounded-[22px] px-4 py-3 w-full w-[48%] max-w-[170px] shadow-md">
         <div className="text-right leading-tight ml-4">
           <div className="text-[18px] font-extrabold text-[#2E2E2E]">الإفطار</div>
           <div className="text-[18px] font-extrabold text-[#2E2E2E]">{convertTo12Hour(iftar)}</div>
@@ -305,7 +305,7 @@ return (
         </div>
       </div>
       {/* Card 2 */}
-      <div className="flex items-center justify-between bg-[#F7F7F1] rounded-[22px] px-4 py-3 min-w-[160px] shadow-md">
+      <div className="flex items-center justify-between bg-[#F7F7F1] rounded-[22px] px-4 py-3 w-full w-[48%] max-w-[170px] shadow-md">
         <div className="text-right leading-tight ml-1">
           <div className="text-[18px] font-extrabold text-[#2E2E2E]">الإمساك</div>
           <div className="text-[18px] font-extrabold text-[#2E2E2E]"> {convertTo12Hour(imsak)}</div>
@@ -317,7 +317,7 @@ return (
       </div>
     </div>
 
-    <div className="w-[360px] mx-auto px-1">
+<div className="w-full max-w-[360px] mx-auto px-1">
        {/* ================= day ================= */}
        <div
           dir="rtl"

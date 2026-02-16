@@ -4,15 +4,23 @@ export default function AzkarCard() {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate("/AzkarCounter"); 
+    navigate("/AzkarCounter");
   };
 
   return (
     <div className="max-w-xs mx-auto h-29 bg-white rounded-2xl p-6 text-center ml-2 shadow-sm relative mr-2 cursor-pointer hover:shadow-md transition">
       <h2 className="text-xl font-bold mb-4">أذكارك اليومية</h2>
+
       <button
         onClick={handleClick}
-        className="text-white font-semibold py-2 px-4 rounded-4xl bg-gradient-to-b from-[#d8b15c] to-[#bf943f]" 
+        className="
+          absolute left-1/2 -translate-x-1/2 bottom-4
+          inline-flex items-center justify-center
+          max-w-[calc(100%-48px)]
+          whitespace-nowrap
+          text-white font-semibold py-2 px-4 rounded-4xl
+          bg-gradient-to-b from-[#d8b15c] to-[#bf943f]
+        "
       >
         اقرأ أذكارك
       </button>
