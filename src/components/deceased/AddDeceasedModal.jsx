@@ -1,13 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export default function AddDeceasedModal({ open, onClose, onSubmit }) {
   const [name, setName] = useState("");
   const [gender, setGender] = useState("male");
   const [note, setNote] = useState("");
 
+  // ✅ حل المشكلة: Portal + قفل سكرول الخلفية
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       {/* Overlay */}
       <div
@@ -127,6 +138,7 @@ export default function AddDeceasedModal({ open, onClose, onSubmit }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -50,7 +50,7 @@ function ShareCard({ dua, idx }) {
     <div
       id={`share-card-${idx}`}
       dir="rtl"
-      className="fixed left-0 top-0 w-[1080px] h-[1350px] overflow-hidden opacity-0 pointer-events-none -z-10"
+      className="fixed left-0 top-0 w-[1080px] min-h-[1350px] h-auto overflow-visible opacity-0 pointer-events-none -z-10 flex flex-col"
       style={{
         background:
           "radial-gradient(circle at 20% 10%, rgba(215,178,102,.35), transparent 55%), radial-gradient(circle at 80% 40%, rgba(200,155,75,.35), transparent 60%), linear-gradient(180deg,#FBF6EA,#F3EAD2,#EAD9B8)",
@@ -74,8 +74,7 @@ function ShareCard({ dua, idx }) {
             {/* ✅ لوجو الموقع (public/logo.png) */}
             <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-[#D7B266] shadow-[0_18px_50px_rgba(0,0,0,0.15)] bg-white">
               <img
-                src="https://i.ibb.co/jZMtLmJG/logo.png"
-                crossOrigin="anonymous"
+                src="/logo.png"
                 alt="logo"
                 className="h-full w-full object-cover"
               />
@@ -114,7 +113,7 @@ function ShareCard({ dua, idx }) {
       </div>
 
       {/* Footer */}
-      <div className="absolute bottom-0 left-0 right-0 p-14">
+        <div className="mt-auto p-14">
         <div className="flex items-center justify-between">
           <div className="text-[26px] font-bold text-zinc-800">
             📌 افتح الموقع وشوف أدعية جديدة يوميًا
@@ -217,17 +216,22 @@ export default function DuaDaily() {
       // ✅ استنى تحميل الخطوط
       if (document.fonts?.ready) await document.fonts.ready;
 
-      // ✅ استنى تحميل الصور داخل الكارت
-      const imgs = Array.from(node.querySelectorAll("img"));
-      await Promise.all(
-        imgs.map((img) => {
-          if (img.complete) return Promise.resolve();
-          return new Promise((res) => {
-            img.onload = res;
-            img.onerror = res;
-          });
-        })
-      );
+   const imgs = Array.from(node.querySelectorAll("img"));
+    await Promise.all(
+      imgs.map(async (img) => {
+        try {
+          if (!img.complete) {
+            await new Promise((res) => {
+              img.onload = res;
+              img.onerror = res;
+            });
+          }
+          // ✅ مهمة جدًا: decode تضمن انه اترسم فعلاً
+          if (img.decode) await img.decode();
+        } catch {}
+      })
+    );
+
 
       const dataUrl = await toPng(node, {
         cacheBust: true,

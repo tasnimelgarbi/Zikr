@@ -14,6 +14,7 @@ export default function PrayerTimesCard() {
   };
 
   const title = "مواقيت الصلاة";
+  const [goldKey, setGoldKey] = useState(null);
   const [times, setTimes] = useState(null);
   const [countdown, setCountdown] = useState("00:00:00");
   const [remaining, setRemaining] = useState("");
@@ -96,9 +97,15 @@ export default function PrayerTimesCard() {
       const minutes = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
       const seconds = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
 
-      setCountdown(`${hours}:${minutes}:${seconds}`);
+     setCountdown(`${hours}:${minutes}:${seconds}`);
       setRemaining(`متبقي على صلاة ${nextPrayer.label}`);
+      // الأخضر (الصلاة الجاية)
       setActiveKey(nextPrayer.key);
+      // الذهبي (الصلاة السابقة)
+      const nextIndex = prayers.findIndex((x) => x.key === nextPrayer.key);
+      const prevIndex = (nextIndex - 1 + prayers.length) % prayers.length;
+      setGoldKey(prayers[prevIndex].key);
+
     };
 
     updateCountdown();
@@ -111,7 +118,7 @@ export default function PrayerTimesCard() {
     { key: "dhuhr", label: "الظهر", time: formatTime(times.Dhuhr), icon: icon.dhuhr, iconBg: "#a8c9b8", textColor: "text-gray-800" },
     { key: "asr", label: "العصر", time: formatTime(times.Asr), icon: icon.asr, iconBg: "#d4c4a8", textColor: "text-gray-800" },
     { key: "maghrib", label: "المغرب", time: formatTime(times.Maghrib), icon: icon.maghrib, iconBg: "#c4a857", textColor: "text-gray-800" },
-    { key: "isha", label: "العشاء", time: formatTime(times.Isha), icon: icon.isha, iconBg: "#c4a857", textColor: "text-gray-800", hasGoldBorder: true },
+    { key: "isha", label: "العشاء", time: formatTime(times.Isha), icon: icon.isha, iconBg: "#c4a857", textColor: "text-gray-800" },
   ] : [];
 
   function formatTime(time24) {
@@ -164,7 +171,7 @@ export default function PrayerTimesCard() {
                     iconBg={r.iconBg}
                     textColor={r.textColor}
                     isActive={r.key === activeKey}
-                    hasGoldBorder={r.hasGoldBorder}
+                    hasGoldBorder={r.key === goldKey}   // 👈 هنا التعديل
                   />
                 ))}
               </div>
