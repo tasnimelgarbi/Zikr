@@ -14,6 +14,8 @@ async function dataUrlToFile(dataUrl, fileName = "zekr.png") {
   return new File([blob], fileName, { type: "image/png" });
 }
 
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
 // ✅ preload + decode (مهم جدًا للموبايل)
 async function preloadAndDecode(url) {
   const img = new Image();
@@ -133,7 +135,7 @@ export default function QuickDuaPopup({ open, onClose }) {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // ✅ أهم حاجة: preload assets + fonts أول ما يفتح البوباب
+    // ✅ preload assets + fonts أول ما يفتح البوباب
     setAssetsReady(false);
     (async () => {
       try {
@@ -143,13 +145,13 @@ export default function QuickDuaPopup({ open, onClose }) {
           document.fonts?.ready ?? Promise.resolve(),
         ]);
 
-        // ✅ خلي فيه frame عشان Safari يرسم الخلفية فعلاً
+        // ✅ Safari: فريمين تثبيت
         await new Promise((r) => requestAnimationFrame(r));
         await new Promise((r) => requestAnimationFrame(r));
 
         setAssetsReady(true);
       } catch {
-        setAssetsReady(true); // حتى لو فشل، ما نعلقش
+        setAssetsReady(true);
       }
     })();
 
@@ -168,15 +170,14 @@ export default function QuickDuaPopup({ open, onClose }) {
     else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
   };
 
-  // ✅ أهم تعديل: ممنوع يبدأ شير الصورة إلا لما تجهز + منع الدبل كليك
   const shareAsImage = async () => {
     if (!item) return;
-    if (sharing) return; // ✅ منع الضغط السريع/المتكرر
+    if (sharing) return;
 
     try {
       setSharing(true);
 
-      // ✅ استنى الفونت يخلص تحميل (مهم جدًا)
+      // ✅ استنى الفونت يخلص تحميل
       await (document.fonts?.ready ?? Promise.resolve());
 
       // ✅ لو لسه الصور ما جهزتش، استنى
@@ -184,14 +185,20 @@ export default function QuickDuaPopup({ open, onClose }) {
         await Promise.all([preloadAndDecode(bgUrl), preloadAndDecode(logoUrl)]);
       }
 
-      // ✅ خلي رندر يثبت (Safari محتاج frame زيادة)
-      await new Promise((r) => requestAnimationFrame(r));
-      await new Promise((r) => requestAnimationFrame(r));
-
       const node = document.getElementById("quick-share-card");
       if (!node) throw new Error("Share card not found");
 
-      // ✅ استنى صور الكارت نفسها (bg + logo) — ضمان إضافي
+      // ✅ Safari: إجبار reflow/layout قبل اللقطة
+      node.style.transform = "translateZ(0)";
+      // eslint-disable-next-line no-unused-expressions
+      node.offsetHeight;
+
+      // ✅ فريمين + تأخير بسيط جدًا
+      await new Promise((r) => requestAnimationFrame(r));
+      await new Promise((r) => requestAnimationFrame(r));
+      await wait(120);
+
+      // ✅ استنى صور الكارت نفسها
       const imgs = Array.from(node.querySelectorAll("img"));
       await Promise.all(
         imgs.map(async (img) => {
@@ -207,13 +214,24 @@ export default function QuickDuaPopup({ open, onClose }) {
         })
       );
 
-      const dataUrl = await toPng(node, {
-        cacheBust: true,
-        pixelRatio: 2,
-        backgroundColor: "#000",
-        style: { opacity: "1", transform: "none" },
-        useCORS: true,
-      });
+      const makePng = () =>
+        toPng(node, {
+          cacheBust: true,
+          pixelRatio: 2,
+          backgroundColor: "#000",
+          style: { opacity: "1", transform: "none" },
+          useCORS: true,
+        });
+
+      // ✅ لقطة أولى
+      let dataUrl = await makePng();
+
+      // ✅ لو طلعت فاضية/صغيرة جدًا (Safari bug) جرّب مرة تانية تلقائيًا
+      if (!dataUrl || dataUrl.length < 20000) {
+        await wait(180);
+        await new Promise((r) => requestAnimationFrame(r));
+        dataUrl = await makePng();
+      }
 
       const file = await dataUrlToFile(dataUrl, "zekr-quick.png");
 
@@ -230,7 +248,6 @@ export default function QuickDuaPopup({ open, onClose }) {
         return;
       }
 
-      // fallback
       window.open(
         `https://wa.me/?text=${encodeURIComponent(buildShareText(item))}`
       );
@@ -299,14 +316,31 @@ export default function QuickDuaPopup({ open, onClose }) {
                 <Share2 className="inline w-4 h-4 ml-1" /> شير
               </button>
 
+              {/* ✅ زرار صورة: Spinner شيك بدل "جاري..." */}
               <button
                 onClick={shareAsImage}
                 disabled={sharing || !assetsReady}
-                className="rounded-2xl py-3 border border-black/10 bg-white font-extrabold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                className="relative rounded-2xl py-3 border border-black/10 bg-white font-extrabold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 aria-busy={sharing ? "true" : "false"}
               >
-                <ImageIcon className="inline w-4 h-4 ml-1" />{" "}
-                {sharing ? "جاري..." : assetsReady ? "صورة" : "..."}
+                <span
+                  className={`inline-flex items-center justify-center transition ${
+                    sharing ? "opacity-0" : "opacity-100"
+                  }`}
+                >
+                  <ImageIcon className="inline w-4 h-4 ml-1" /> صورة
+                </span>
+
+                {(sharing || !assetsReady) && (
+                  <span className="absolute inset-0 grid place-items-center">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-4 w-4 rounded-full border-2 border-black/20 border-t-black/70 animate-spin" />
+                      <span className="text-[12px] font-extrabold text-black/60">
+                        تجهيز
+                      </span>
+                    </span>
+                  </span>
+                )}
               </button>
             </div>
 
