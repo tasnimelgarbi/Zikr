@@ -14,14 +14,25 @@ async function dataUrlToFile(dataUrl, fileName = "zekr.png") {
   return new File([blob], fileName, { type: "image/png" });
 }
 
-// ✅ ShareCard مخفي — يتحول لصورة (الخلفية img مش background)
-function ShareCard({ item }) {
-  if (!item) return null;
+// ✅ preload + decode (مهم جدًا للموبايل)
+async function preloadAndDecode(url) {
+  const img = new Image();
+  img.src = url;
+  if (!img.complete) {
+    await new Promise((res) => {
+      img.onload = res;
+      img.onerror = res;
+    });
+  }
+  try {
+    if (img.decode) await img.decode();
+  } catch {}
+  return true;
+}
 
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
-  const bgUrl = `${origin}/duaa.png`;
-  const logoUrl = `${origin}/logo.png`;
+// ✅ ShareCard مخفي — الخلفية img (أفضل مع html-to-image)
+function ShareCard({ item, bgUrl, logoUrl }) {
+  if (!item) return null;
 
   return (
     <div
@@ -30,30 +41,21 @@ function ShareCard({ item }) {
       className="fixed left-0 top-0 w-[1080px] min-h-[1350px] h-auto overflow-hidden opacity-0 pointer-events-none -z-10 flex flex-col"
       style={{ fontFamily: "'Amiri', serif" }}
     >
-      {/* ✅ الخلفية كصورة حقيقية (ده اللي بيحل السواد) */}
       <img
         src={bgUrl}
         alt="bg"
-        crossOrigin="anonymous"
-        referrerPolicy="no-referrer"
         className="absolute inset-0 w-full h-full object-cover"
         draggable="false"
       />
-
-      {/* Overlay عشان النص يبان */}
       <div className="absolute inset-0 bg-black/60" />
 
-      {/* Content */}
       <div className="relative p-20">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-[#D7B266] shadow-2xl bg-white">
               <img
                 src={logoUrl}
                 alt="logo"
-                crossOrigin="anonymous"
-                referrerPolicy="no-referrer"
                 className="h-full w-full object-cover"
                 draggable="false"
               />
@@ -77,7 +79,6 @@ function ShareCard({ item }) {
           </div>
         </div>
 
-        {/* Body */}
         <div className="mt-24 rounded-[60px] bg-black/35 backdrop-blur-xl border border-white/20 shadow-[0_40px_140px_rgba(0,0,0,0.6)] p-24">
           <div className="text-center text-[48px] font-extrabold text-[#D7B266]">
             {item.type}
@@ -89,7 +90,6 @@ function ShareCard({ item }) {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="relative mt-auto p-20 text-center">
         <div className="text-[28px] font-bold text-white/90">
           https://zikrr.vercel.app/
@@ -108,6 +108,12 @@ function ShareCard({ item }) {
 export default function QuickDuaPopup({ open, onClose }) {
   const [item, setItem] = useState(null);
   const [sharing, setSharing] = useState(false);
+  const [assetsReady, setAssetsReady] = useState(false);
+
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const bgUrl = `${origin}/duaa.png`;
+  const logoUrl = `${origin}/logo.png`;
 
   useEffect(() => {
     if (!open) return;
@@ -121,8 +127,24 @@ export default function QuickDuaPopup({ open, onClose }) {
 
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    // ✅ أهم حاجة: preload assets أول ما يفتح البوباب
+    setAssetsReady(false);
+    (async () => {
+      try {
+        await Promise.all([
+          preloadAndDecode(bgUrl),
+          preloadAndDecode(logoUrl),
+          document.fonts?.ready ?? Promise.resolve(),
+        ]);
+        setAssetsReady(true);
+      } catch {
+        setAssetsReady(true); // حتى لو فشل، ما نعلقش
+      }
+    })();
+
     return () => (document.body.style.overflow = prev);
-  }, [open]);
+  }, [open, bgUrl, logoUrl]);
 
   const copy = async () => {
     if (!item) return;
@@ -142,26 +164,29 @@ export default function QuickDuaPopup({ open, onClose }) {
     try {
       setSharing(true);
 
-      // ✅ سيب ريندر يحصل مرتين عشان الصور تلحق تترسم
+      // ✅ لو لسه الصور ما جهزتش، استنى
+      if (!assetsReady) {
+        await Promise.all([preloadAndDecode(bgUrl), preloadAndDecode(logoUrl)]);
+      }
+
+      // خلي رندر يثبت
       await new Promise((r) => requestAnimationFrame(r));
       await new Promise((r) => requestAnimationFrame(r));
 
       const node = document.getElementById("quick-share-card");
       if (!node) throw new Error("Share card not found");
 
-      if (document.fonts?.ready) await document.fonts.ready;
-
-      // ✅ استنى كل الصور (الخلفية + اللوجو) + decode
+      // استنى صور الكارت نفسها
       const imgs = Array.from(node.querySelectorAll("img"));
       await Promise.all(
         imgs.map(async (img) => {
+          if (!img.complete) {
+            await new Promise((res) => {
+              img.onload = res;
+              img.onerror = res;
+            });
+          }
           try {
-            if (!img.complete) {
-              await new Promise((res) => {
-                img.onload = res;
-                img.onerror = res;
-              });
-            }
             if (img.decode) await img.decode();
           } catch {}
         })
@@ -172,7 +197,6 @@ export default function QuickDuaPopup({ open, onClose }) {
         pixelRatio: 2,
         backgroundColor: "#000",
         style: { opacity: "1", transform: "none" },
-        // ✅ يساعد على الموبايل
         useCORS: true,
       });
 
@@ -191,9 +215,7 @@ export default function QuickDuaPopup({ open, onClose }) {
         return;
       }
 
-      window.open(
-        `https://wa.me/?text=${encodeURIComponent(buildShareText(item))}`
-      );
+      window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText(item))}`);
     } catch (e) {
       console.error(e);
     } finally {
@@ -205,13 +227,10 @@ export default function QuickDuaPopup({ open, onClose }) {
 
   return createPortal(
     <>
-      <ShareCard item={item} />
+      <ShareCard item={item} bgUrl={bgUrl} logoUrl={logoUrl} />
 
       <div className="fixed inset-0 z-[999999] flex items-center justify-center px-4">
-        <div
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          onClick={onClose}
-        />
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
         <div className="relative w-[92%] max-w-md overflow-hidden rounded-3xl border border-black/10 bg-white/90 shadow-[0_22px_70px_rgba(0,0,0,.25)]">
           <button
@@ -251,20 +270,18 @@ export default function QuickDuaPopup({ open, onClose }) {
               <button
                 onClick={share}
                 className="rounded-2xl py-3 text-white font-extrabold shadow-sm"
-                style={{
-                  background: "linear-gradient(180deg,#D7B266,#C89B4B,#B98636)",
-                }}
+                style={{ background: "linear-gradient(180deg,#D7B266,#C89B4B,#B98636)" }}
               >
                 <Share2 className="inline w-4 h-4 ml-1" /> شير
               </button>
 
               <button
                 onClick={shareAsImage}
-                disabled={sharing}
+                disabled={sharing || !assetsReady}
                 className="rounded-2xl py-3 border border-black/10 bg-white font-extrabold shadow-sm disabled:opacity-60"
               >
                 <ImageIcon className="inline w-4 h-4 ml-1" />{" "}
-                {sharing ? "..." : "صورة"}
+                {sharing ? "..." : assetsReady ? "صورة" : "..."}
               </button>
             </div>
 
