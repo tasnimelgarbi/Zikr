@@ -16,24 +16,15 @@ async function dataUrlToFile(dataUrl, fileName = "zekr.png") {
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ✅ preload + decode (مهم جدًا للموبايل)
-async function preloadAndDecode(url) {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = url;
-
-  if (!img.complete) {
-    await new Promise((res) => {
-      img.onload = res;
-      img.onerror = res;
-    });
-  }
-
-  try {
-    if (img.decode) await img.decode();
-  } catch {}
-
-  return true;
+// ✅ تحميل الصورة كـ DataURL (Base64) — يحل مشكلة أول شير (Safari/iOS)
+async function fetchAsDataUrl(url) {
+  const res = await fetch(url, { cache: "force-cache" });
+  const blob = await res.blob();
+  return await new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
 }
 
 // ✅ ShareCard مخفي — الخلفية img (أفضل مع html-to-image)
@@ -52,7 +43,8 @@ function ShareCard({ item, bgUrl, logoUrl }) {
         alt="bg"
         className="absolute inset-0 w-full h-full object-cover"
         draggable="false"
-        crossOrigin="anonymous"
+        loading="eager"
+        decoding="sync"
       />
       <div className="absolute inset-0 bg-black/60" />
 
@@ -65,7 +57,8 @@ function ShareCard({ item, bgUrl, logoUrl }) {
                 alt="logo"
                 className="h-full w-full object-cover"
                 draggable="false"
-                crossOrigin="anonymous"
+                loading="eager"
+                decoding="sync"
               />
             </div>
 
@@ -118,6 +111,10 @@ export default function QuickDuaPopup({ open, onClose }) {
   const [sharing, setSharing] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
 
+  // ✅ DataURL للأصول (عشان أول شير يطلع كامل)
+  const [bgDataUrl, setBgDataUrl] = useState("");
+  const [logoDataUrl, setLogoDataUrl] = useState("");
+
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const bgUrl = `${origin}/duaa.png`;
   const logoUrl = `${origin}/logo.png`;
@@ -135,22 +132,34 @@ export default function QuickDuaPopup({ open, onClose }) {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // ✅ preload assets + fonts أول ما يفتح البوباب
+    // ✅ جهّز الأصول أول ما يفتح البوباب
     setAssetsReady(false);
+    setBgDataUrl("");
+    setLogoDataUrl("");
+
     (async () => {
       try {
-        await Promise.all([
-          preloadAndDecode(bgUrl),
-          preloadAndDecode(logoUrl),
-          document.fonts?.ready ?? Promise.resolve(),
+        const [bg64, logo64] = await Promise.all([
+          fetchAsDataUrl(bgUrl),
+          fetchAsDataUrl(logoUrl),
         ]);
+
+        setBgDataUrl(bg64);
+        setLogoDataUrl(logo64);
+
+        // ✅ استنى الفونت
+        await (document.fonts?.ready ?? Promise.resolve());
 
         // ✅ Safari: فريمين تثبيت
         await new Promise((r) => requestAnimationFrame(r));
         await new Promise((r) => requestAnimationFrame(r));
 
         setAssetsReady(true);
-      } catch {
+      } catch (e) {
+        console.error(e);
+        // ✅ fallback: لو فشل base64 لأي سبب
+        setBgDataUrl(bgUrl);
+        setLogoDataUrl(logoUrl);
         setAssetsReady(true);
       }
     })();
@@ -177,12 +186,18 @@ export default function QuickDuaPopup({ open, onClose }) {
     try {
       setSharing(true);
 
-      // ✅ استنى الفونت يخلص تحميل
+      // ✅ استنى الفونت
       await (document.fonts?.ready ?? Promise.resolve());
 
-      // ✅ لو لسه الصور ما جهزتش، استنى
+      // ✅ لازم الأصول تكون جاهزة
       if (!assetsReady) {
-        await Promise.all([preloadAndDecode(bgUrl), preloadAndDecode(logoUrl)]);
+        // لو لسبب ما مش جاهزة، جرّب تجهيزها سريعًا
+        const [bg64, logo64] = await Promise.all([
+          bgDataUrl ? Promise.resolve(bgDataUrl) : fetchAsDataUrl(bgUrl),
+          logoDataUrl ? Promise.resolve(logoDataUrl) : fetchAsDataUrl(logoUrl),
+        ]);
+        if (!bgDataUrl) setBgDataUrl(bg64);
+        if (!logoDataUrl) setLogoDataUrl(logo64);
       }
 
       const node = document.getElementById("quick-share-card");
@@ -198,29 +213,12 @@ export default function QuickDuaPopup({ open, onClose }) {
       await new Promise((r) => requestAnimationFrame(r));
       await wait(120);
 
-      // ✅ استنى صور الكارت نفسها
-      const imgs = Array.from(node.querySelectorAll("img"));
-      await Promise.all(
-        imgs.map(async (img) => {
-          if (!img.complete) {
-            await new Promise((res) => {
-              img.onload = res;
-              img.onerror = res;
-            });
-          }
-          try {
-            if (img.decode) await img.decode();
-          } catch {}
-        })
-      );
-
       const makePng = () =>
         toPng(node, {
           cacheBust: true,
           pixelRatio: 2,
           backgroundColor: "#000",
           style: { opacity: "1", transform: "none" },
-          useCORS: true,
         });
 
       // ✅ لقطة أولى
@@ -262,7 +260,12 @@ export default function QuickDuaPopup({ open, onClose }) {
 
   return createPortal(
     <>
-      <ShareCard item={item} bgUrl={bgUrl} logoUrl={logoUrl} />
+      {/* ✅ استخدم الـ DataURL لو موجود (مضمون في أول مرة) */}
+      <ShareCard
+        item={item}
+        bgUrl={bgDataUrl || bgUrl}
+        logoUrl={logoDataUrl || logoUrl}
+      />
 
       <div className="fixed inset-0 z-[999999] flex items-center justify-center px-4">
         <div
