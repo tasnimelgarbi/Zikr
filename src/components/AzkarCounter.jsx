@@ -63,7 +63,7 @@ const AZKAR = {
 export default function AzkarApp() {
   const tasbihImg = "https://i.ibb.co/9km9cKj2/sebha.png";
   const bg = "https://i.ibb.co/7dbPtvSd/bg-azkar.jpg";
-  
+
   const [type, setType] = useState("morning");
   const [zekrIndex, setZekrIndex] = useState(0);
   const [count, setCount] = useState(0);
@@ -86,120 +86,151 @@ export default function AzkarApp() {
     }
   };
 
-  /* ======== CIRCLE SETTINGS ======== */
-  const radius = 150;
+  /* ======== CIRCLE SETTINGS (Shrink only under 375px) ======== */
   const strokeWidth = 14;
+  const BASE_RADIUS = 150; // diameter ≈ 314px
+  const [radius, setRadius] = useState(BASE_RADIUS);
+
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+
+      // لو نفس مقاس الصورة أو أكبر -> ثابت زي ما هو
+      if (w >= 375) {
+        setRadius(BASE_RADIUS);
+        return;
+      }
+
+      // لو أصغر من 375 -> صغّر القطر فقط حسب عرض الشاشة
+      // مساحة آمنة: عرض الشاشة - (padding يمين/شمال) تقريبًا 48px
+      const safe = Math.max(0, w - 48);
+
+      // القطر النهائي لا يزيد عن قطر الصورة
+      const diameter = Math.min(safe, BASE_RADIUS * 2 + strokeWidth);
+
+      // احسب radius من القطر
+      const nextRadius = Math.max(20, (diameter - strokeWidth) / 2);
+
+      setRadius(nextRadius);
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   const size = radius * 2 + strokeWidth;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - progress * circumference;
 
   return (
     <>
-    <div dir="rtl" className="min-h-screen w-full flex flex-col items-center gap-6">
-      <div
-        className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{
-          backgroundImage: `url(${bg})`,
-          backgroundSize: "400px 400px",
-          backgroundRepeat: "repeat",
-        }}
-      />
-
-      {/* Header */}
-     <div className="w-full bg-[#8dcba1c2] h-[100px] rounded-b-4xl relative flex items-center justify-center">
-        {/* Back button */}
-        <div className="absolute right-4 top-4 z-20">
-          <BackButton />
-        </div>
-
-        <h1 className="text-3xl font-extrabold text-black">أذكار وتسبيح</h1>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex justify-center gap-2 mb-4 mt-2 whitespace-nowrap">
-        <Tab text="أذكار النوم" active={type === "sleep"} onClick={() => setType("sleep")} />
-        <Tab text="أذكار المساء" active={type === "evening"} onClick={() => setType("evening")} />
-        <Tab text="أذكار الصباح" active={type === "morning"} onClick={() => setType("morning")} />
-      </div>
-
-      {/* Main Card */}
-      <div className="relative z-10 w-full max-w-md px-3">
+      <div dir="rtl" className="min-h-screen w-full flex flex-col items-center gap-6">
         <div
-          className="relative rounded-[32px] shadow-lg p-6"
+          className="absolute inset-0 opacity-20 pointer-events-none"
           style={{
             backgroundImage: `url(${bg})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
+            backgroundSize: "400px 400px",
+            backgroundRepeat: "repeat",
           }}
-        >
-          {/* Counter Circle */}
-          <div className="relative mx-auto mb-8 mt-14" style={{ width: size, height: size }}>
-            <svg width={size} height={size} className="rotate-[-90deg]">
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="none"
-                stroke="#e0d5c0"
-                strokeWidth={strokeWidth}
-              />
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="none"
-                stroke="#9fc7b2"
-                strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={offset}
-                className="transition-all duration-300"
-              />
-            </svg>
+        />
 
-            {/* Text inside */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-              <div className="text-6xl font-bold text-gray-800">{count}</div>
-              <div className="text-gray-400 text-lg mb-2">/{currentZekr.max}</div>
-            <div
-                className="font-semibold leading-relaxed text-gray-800 text-center overflow-hidden break-words"
-                style={{
-                  maxWidth: "220px",
-                  fontSize: currentZekr.text.length < 50 ? "1.8rem" : "clamp(12px, 2.5vw, 16px)"
-                }}
+        {/* Header */}
+        <div className="w-full bg-[#8dcba1c2] h-[100px] rounded-b-4xl relative flex items-center justify-center">
+          {/* Back button */}
+          <div className="absolute right-4 top-4 z-20">
+            <BackButton />
+          </div>
+
+          <h1 className="text-3xl font-extrabold text-black">أذكار وتسبيح</h1>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex justify-center gap-2 mb-4 mt-2 whitespace-nowrap">
+          <Tab text="أذكار النوم" active={type === "sleep"} onClick={() => setType("sleep")} />
+          <Tab text="أذكار المساء" active={type === "evening"} onClick={() => setType("evening")} />
+          <Tab text="أذكار الصباح" active={type === "morning"} onClick={() => setType("morning")} />
+        </div>
+
+        {/* Main Card */}
+        <div className="relative z-10 w-full max-w-md px-3">
+          <div
+            className="relative rounded-[32px] shadow-lg p-6"
+            style={{
+              backgroundImage: `url(${bg})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            {/* Counter Circle */}
+            <div className="relative mx-auto mb-8 mt-14" style={{ width: size, height: size }}>
+              <svg width={size} height={size} className="rotate-[-90deg]">
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  fill="none"
+                  stroke="#e0d5c0"
+                  strokeWidth={strokeWidth}
+                />
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  fill="none"
+                  stroke="#9fc7b2"
+                  strokeWidth={strokeWidth}
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  className="transition-all duration-300"
+                />
+              </svg>
+
+              {/* Text inside */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                <div className="text-6xl font-bold text-gray-800">{count}</div>
+                <div className="text-gray-400 text-lg mb-2">/{currentZekr.max}</div>
+                <div
+                  className="font-semibold leading-relaxed text-gray-800 text-center overflow-hidden break-words"
+                  style={{
+                    maxWidth: "220px",
+                    fontSize: currentZekr.text.length < 50 ? "1.8rem" : "clamp(12px, 2.5vw, 16px)",
+                  }}
+                >
+                  {currentZekr.text}
+                </div>
+              </div>
+            </div>
+
+            {/* Tasbih Button */}
+            <div className="flex justify-center mb-6">
+              <button
+                onClick={handleClick}
+                className="w-22 h-22 rounded-full shadow-lg active:scale-95 transition bg-[#D4B96E] shadow-2xl"
               >
-                {currentZekr.text}
+                <img src={tasbihImg} alt="سبحة" className="rounded-full w-full h-full object-contain" />
+              </button>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="bg-white rounded-2xl shadow p-4">
+              <div className="flex justify-between mb-2">
+                <span className="font-bold">{Math.floor(progress * 100)}%</span>
+                <span className="text-sm text-gray-600">مستوى التقدم</span>
+              </div>
+              <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#D4B96E] to-[#9fc7b2]"
+                  style={{ width: `${progress * 100}%` }}
+                />
               </div>
             </div>
           </div>
-
-          {/* Tasbih Button */}
-          <div className="flex justify-center mb-6">
-            <button
-              onClick={handleClick}
-              className="w-22 h-22 rounded-full shadow-lg active:scale-95 transition bg-[#D4B96E] shadow-2xl"
-            >
-              <img src={tasbihImg} alt="سبحة" className="rounded-full w-full h-full object-contain" />
-            </button>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="bg-white rounded-2xl shadow p-4">
-            <div className="flex justify-between mb-2">
-              <span className="font-bold">{Math.floor(progress * 100)}%</span>
-              <span className="text-sm text-gray-600">مستوى التقدم</span>
-            </div>
-            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[#D4B96E] to-[#9fc7b2]"
-                style={{ width: `${progress * 100}%` }}
-              />
-            </div>
-          </div>
         </div>
       </div>
-    </div>   
-    <Footer />
+
+      <Footer />
     </>
   );
 }
