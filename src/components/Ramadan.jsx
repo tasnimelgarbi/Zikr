@@ -17,6 +17,7 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
   const [nextPrayerText, setNextPrayerText] = useState("");
   const [hijriYear, setHijriYear] = useState(null);
   const [hijriMonthAr, setHijriMonthAr] = useState("");
+  const [fajrTime, setFajrTime] = useState("");
   const TZ = "Africa/Cairo";
   const ADJUSTMENT = 1;
   const EGYPT_RUYA_OFFSET_DAYS = 0;
@@ -70,7 +71,8 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
       const cleanTime = (t) => String(t || "").split(" ")[0];
 
       setIftar(cleanTime(timings.Maghrib));
-      setImsak(cleanTime(timings.Imsak || timings.Fajr));
+      setImsak(cleanTime(timings.Imsak || timings.Fajr)); // ✅ كارت الإمساك
+      setFajrTime(cleanTime(timings.Fajr));               // ✅ للعداد فقط
 
       setHijriYear(Number(hijri?.year));
       setHijriMonthAr(hijri?.month?.ar || "");
@@ -183,19 +185,22 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
           return d;
         };
 
-        const fajr = cleanTime(imsak);
-        const maghrib = cleanTime(iftar);
+          const fajr = cleanTime(fajrTime);
+          const maghrib = cleanTime(iftar);
 
-        let target;
-        let label;
+          let target;
+          let label;
 
-        if (now >= fajr && now < maghrib) {
-          target = maghrib;
-          label = "المغرب";
-        } else {
-          target = cleanTime(imsak, true);
-          label = "الفجر";
-        }
+          if (now < fajr) {
+            target = fajr;
+            label = "الفجر";
+          } else if (now >= fajr && now < maghrib) {
+            target = maghrib;
+            label = "المغرب";
+          } else {
+            target = cleanTime(fajrTime, true); // ✅ فجر بكرة
+            label = "الفجر";
+          }
 
         const diff = target - now;
         if (diff <= 0) return;
@@ -216,7 +221,7 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [ramadanStartMaghrib, isRamadan, imsak, iftar]);
+  }, [ramadanStartMaghrib, isRamadan, fajrTime, iftar]);
 
   const convertTo12Hour = (time24) => {
     const [h, m] = time24.split(":").map(Number);
