@@ -6,13 +6,23 @@ export default function AddDeceasedModal({ open, onClose, onSubmit }) {
   const [gender, setGender] = useState("male");
   const [note, setNote] = useState("");
 
-  // ✅ حل المشكلة: Portal + قفل سكرول الخلفية
+  const resetForm = () => {
+    setName("");
+    setGender("male");
+    setNote("");
+  };
+
+  // ✅ Portal + قفل سكرول الخلفية + (اختياري) تصفير عند الإغلاق
   useEffect(() => {
     if (!open) return;
+
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = prev;
+      // 👇 اختياري: يخليها دايمًا فاضية بعد أي إغلاق
+      resetForm();
     };
   }, [open]);
 
@@ -30,7 +40,6 @@ export default function AddDeceasedModal({ open, onClose, onSubmit }) {
       <div className="relative w-[92%] max-w-md overflow-hidden rounded-3xl border border-black/10 bg-white/85 shadow-[0_22px_70px_rgba(0,0,0,.25)]">
         {/* Decorative header */}
         <div className="relative px-6 pt-6 pb-4">
-          {/* Parchment gradients */}
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute inset-0 bg-gradient-to-b from-[#FFF9EE] via-[#F6F0E3] to-[#EFE6D2]" />
             <div className="absolute -top-16 left-[-90px] h-44 w-44 rounded-full bg-[#E7C87A]/28 blur-3xl" />
@@ -116,14 +125,20 @@ export default function AddDeceasedModal({ open, onClose, onSubmit }) {
 
           {/* Actions */}
           <button
-            onClick={() =>
+            onClick={() => {
+              // ✅ منع إضافة فاضي
+              if (!name.trim()) return;
+
               onSubmit({
-                name,
+                name: name.trim(),
                 gender,
-                note,
+                note: note.trim(),
                 prayers: 0,
-              })
-            }
+              });
+
+              // ✅ هنا الحل الأساسي: بعد الإضافة صفّر الحقول فورًا
+              resetForm();
+            }}
             className="w-full rounded-2xl py-3 font-extrabold text-white shadow-[0_14px_30px_rgba(0,0,0,.12)] transition active:scale-[0.99]"
             style={{
               background: "linear-gradient(180deg,#2E7D64,#1F6A55,#165545)",
@@ -132,7 +147,6 @@ export default function AddDeceasedModal({ open, onClose, onSubmit }) {
             إضافة 🤍
           </button>
 
-          {/* small footer hint */}
           <div className="mt-3 text-center text-xs font-semibold text-black/55">
             يمكن غلق النافذة بالضغط خارج المربع
           </div>
