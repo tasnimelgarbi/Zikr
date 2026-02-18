@@ -6,7 +6,7 @@ import Footer from "./Footer.jsx";
 export default function RamadanDashboard({ titel = "لوحة تحكم رمضان" }) {
   const bg = "https://i.ibb.co/vxdkLmLZ/ramdan-card.jpg";
 
-  const [ramadanStartFajr, setRamadanStartFajr] = useState(null);
+  const [ramadanStartMaghrib, setRamadanStartMaghrib] = useState(null);
   const [ramadanDays, setRamadanDays] = useState([]);
   const [activeDay, setActiveDay] = useState(null);
   const [isRamadan, setIsRamadan] = useState(false);
@@ -76,21 +76,28 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
       setHijriMonthAr(hijri?.month?.ar || "");
 
       const monthEn = String(hijri?.month?.en || "").toLowerCase();
+
+      // ✅ رمضان يبدأ بعد المغرب (مش بعد الفجر)
       const ram =
         monthEn.includes("ram") &&
-        (!ramadanStartFajr || new Date() >= ramadanStartFajr);
+        ramadanStartMaghrib &&
+        new Date() >= ramadanStartMaghrib;
 
       if (ram) {
+        const now = new Date();
+        const dayNum =
+          Math.floor((now - ramadanStartMaghrib) / 86400000) + 1; // 1..30
+
         setIsRamadan(true);
-        setActiveDay(Number(hijri.day));
-        setDayText(`اليوم ${hijri.day} من رمضان`);
+        setActiveDay(dayNum);
+        setDayText(`اليوم ${dayNum} من رمضان`);
       } else {
         setIsRamadan(false);
         setActiveDay(null);
         setDayText("اليوم 0 من رمضان");
       }
     }
-  }, []);
+  }, [ramadanStartMaghrib]);
 
   useEffect(() => {
     const city = localStorage.getItem("city") || "Cairo";
@@ -109,12 +116,17 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
         setRamadanDays(days.map((d) => Number(d.date.hijri.day)));
 
         const firstDay = days[0];
-        const fajrClean = String(firstDay?.timings?.Fajr || "").split(" ")[0];
-        if (!fajrClean.includes(":")) return;
 
-        const [h, m] = fajrClean.split(":").map(Number);
+        // ✅ هنحسب بداية رمضان من المغرب (fallback على Sunset)
+        const maghribClean = String(
+          firstDay?.timings?.Maghrib || firstDay?.timings?.Sunset || ""
+        ).split(" ")[0];
 
-        const firstFajrDate = new Date(
+        if (!maghribClean.includes(":")) return;
+
+        const [h, m] = maghribClean.split(":").map(Number);
+
+        const firstMaghribDate = new Date(
           Number(firstDay.date.gregorian.year),
           Number(firstDay.date.gregorian.month.number) - 1,
           Number(firstDay.date.gregorian.day),
@@ -123,23 +135,25 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
           0
         );
 
-        // ✅ إصلاح مصر: 19 بدل 18
-        firstFajrDate.setDate(firstFajrDate.getDate() + EGYPT_RUYA_OFFSET_DAYS);
+        // ✅ إصلاح مصر: الرؤية متأخرة يوم
+        firstMaghribDate.setDate(
+          firstMaghribDate.getDate() + EGYPT_RUYA_OFFSET_DAYS
+        );
 
-        setRamadanStartFajr(firstFajrDate);
+        setRamadanStartMaghrib(firstMaghribDate);
       })
       .catch((err) => console.error("Hijri Calendar API Error:", err));
   }, [hijriYear]);
 
   useEffect(() => {
-    if (!ramadanStartFajr) return;
+    if (!ramadanStartMaghrib) return;
 
     const interval = setInterval(() => {
       const now = new Date();
 
       // 🟡 قبل رمضان
       if (!isRamadan) {
-        const diff = ramadanStartFajr - now;
+        const diff = ramadanStartMaghrib - now;
         if (diff <= 0) return;
 
         const h = Math.floor(diff / 3600000);
@@ -151,11 +165,13 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
             .toString()
             .padStart(2, "0")}:${s.toString().padStart(2, "0")}`
         );
-        setNextPrayerText("متبقي على فجر رمضان");
+
+        // ✅ بما إن رمضان بيبدأ من المغرب هنا
+        setNextPrayerText("متبقي على مغرب رمضان");
         return;
       }
 
-      // 🟢 رمضان
+      // 🟢 رمضان (عداد الإمساك/الإفطار زي ما هو)
       const updateCountdown = () => {
         const now = new Date();
 
@@ -196,12 +212,11 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
         setNextPrayerText(`متبقي على صلاة ${label}`);
       };
 
-      // ✅ كان متعرّف ومش بيتنادى
       updateCountdown();
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [ramadanStartFajr, isRamadan, imsak, iftar]);
+  }, [ramadanStartMaghrib, isRamadan, imsak, iftar]);
 
   const convertTo12Hour = (time24) => {
     const [h, m] = time24.split(":").map(Number);
@@ -357,7 +372,10 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
 
         <div className="w-full max-w-[360px] mx-auto px-1">
           {/* ================= day ================= */}
-          <div dir="rtl" className="relative max-w-[700px] overflow-hidden rounded-t-[24px]">
+          <div
+            dir="rtl"
+            className="relative max-w-[700px] overflow-hidden rounded-t-[24px]"
+          >
             <img
               src={bg}
               alt="Ramadan background"

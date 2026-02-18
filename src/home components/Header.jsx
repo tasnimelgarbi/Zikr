@@ -22,183 +22,214 @@ const clearPrayerCaches = () => {
   }
 };
 
-export default function Header({
-  onCalendar,
-}) {
+export default function Header({ onCalendar }) {
   const [hijriHeader, setHijriHeader] = useState("اليوم 0 من رمضان");
   const [isRamadan, setIsRamadan] = useState(false);
   const [activeDay, setActiveDay] = useState(0);
   const [gregorianHeader, setGregorianHeader] = useState("");
   const [countdown, setCountdown] = useState("--:--:--");
   const [nextPrayerText, setNextPrayerText] = useState("");
-  
+
+  const TZ = "Africa/Cairo";
+  const EGYPT_RUYA_OFFSET_DAYS = 1;
+
   //countdown logic
- useEffect(() => {
-  let prayersArray = [];
-  let intervalId = null;
+  useEffect(() => {
+    let prayersArray = [];
+    let intervalId = null;
 
-  const fetchTimings = async () => {
-    try {
-      const rawLat = localStorage.getItem("lat");
-      const rawLng = localStorage.getItem("lng");
-      const city = localStorage.getItem("city") || "Cairo";
+    const fetchTimings = async () => {
+      try {
+        const rawLat = localStorage.getItem("lat");
+        const rawLng = localStorage.getItem("lng");
+        const city = localStorage.getItem("city") || "Cairo";
 
-      const method = 5;
-      const school = 0;
+        const method = 5;
+        const school = 0;
 
-      const lat = rawLat ? Number(rawLat).toFixed(4) : null;
-      const lng = rawLng ? Number(rawLng).toFixed(4) : null;
+        const lat = rawLat ? Number(rawLat).toFixed(4) : null;
+        const lng = rawLng ? Number(rawLng).toFixed(4) : null;
 
-      const sourceKey =
-        lat && lng ? `gps-${lat}-${lng}` : `city-${encodeURIComponent(city)}`;
+        const sourceKey =
+          lat && lng ? `gps-${lat}-${lng}` : `city-${encodeURIComponent(city)}`;
 
-      const todayKey = `countdown-timings-${new Date().toDateString()}-${sourceKey}-m${method}-s${school}`;
+        const todayKey = `countdown-timings-${new Date().toDateString()}-${sourceKey}-m${method}-s${school}`;
 
-      const cleanTime = (t) => String(t || "").split(" ")[0]; // "05:12 (EET)" -> "05:12"
+        const cleanTime = (t) => String(t || "").split(" ")[0];
 
-      // ✅ كاش
-      const cached = localStorage.getItem(todayKey);
-      if (cached) {
-        const timings = JSON.parse(cached);
+        // ✅ كاش
+        const cached = localStorage.getItem(todayKey);
+        if (cached) {
+          const timings = JSON.parse(cached);
+          setTimingsAndStart(timings);
+          return;
+        }
+
+        // ✅ URL حسب GPS أو city
+        let url;
+        if (lat && lng) {
+          url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=${method}&school=${school}`;
+        } else {
+          url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(
+            city
+          )}&country=Egypt&method=${method}&school=${school}`;
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+        const timings = data?.data?.timings;
+        if (!timings) return;
+
+        localStorage.setItem(todayKey, JSON.stringify(timings));
         setTimingsAndStart(timings);
-        return;
+
+        function setTimingsAndStart(timings) {
+          prayersArray = [
+            { name: "الفجر", time: cleanTime(timings.Fajr) },
+            { name: "الشروق", time: cleanTime(timings.Sunrise) },
+            { name: "الظهر", time: cleanTime(timings.Dhuhr) },
+            { name: "العصر", time: cleanTime(timings.Asr) },
+            { name: "المغرب", time: cleanTime(timings.Maghrib) },
+            { name: "العشاء", time: cleanTime(timings.Isha) },
+          ];
+
+          updateCountdown();
+
+          if (!intervalId) {
+            intervalId = setInterval(updateCountdown, 1000);
+          }
+        }
+      } catch (err) {
+        console.log("Error fetching timings:", err);
       }
+    };
 
-      // ✅ URL حسب GPS أو city
-      let url;
-      if (lat && lng) {
-        url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=${method}&school=${school}`;
-      } else {
-        url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(
-          city
-        )}&country=Egypt&method=${method}&school=${school}`;
-      }
+    const updateCountdown = () => {
+      if (!prayersArray.length) return;
 
-      const res = await fetch(url);
-      const data = await res.json();
-      const timings = data?.data?.timings;
-      if (!timings) return;
+      const now = new Date();
+      let nextPrayer = null;
 
-      localStorage.setItem(todayKey, JSON.stringify(timings));
-      setTimingsAndStart(timings);
+      for (let p of prayersArray) {
+        const [h, m] = p.time.split(":").map(Number);
+        const pDate = new Date();
+        pDate.setHours(h, m, 0, 0);
 
-      function setTimingsAndStart(timings) {
-        prayersArray = [
-          { name: "الفجر", time: cleanTime(timings.Fajr) },
-          { name: "الشروق", time: cleanTime(timings.Sunrise) },
-          { name: "الظهر", time: cleanTime(timings.Dhuhr) },
-          { name: "العصر", time: cleanTime(timings.Asr) },
-          { name: "المغرب", time: cleanTime(timings.Maghrib) },
-          { name: "العشاء", time: cleanTime(timings.Isha) },
-        ];
-
-        updateCountdown(); // أول مرة بعد ما القائمة تتعبّي
-
-        // ابدأ العداد بعد ما جه timings (علشان ميبقاش فيه ثانية فاضية)
-        if (!intervalId) {
-          intervalId = setInterval(updateCountdown, 1000);
+        if (pDate > now) {
+          nextPrayer = { ...p, date: pDate };
+          break;
         }
       }
-    } catch (err) {
-      console.log("Error fetching timings:", err);
-    }
-  };
 
-  const updateCountdown = () => {
-    if (!prayersArray.length) return;
-
-    const now = new Date();
-    let nextPrayer = null;
-
-    for (let p of prayersArray) {
-      const [h, m] = p.time.split(":").map(Number);
-      const pDate = new Date();
-      pDate.setHours(h, m, 0, 0);
-
-      if (pDate > now) {
-        nextPrayer = { ...p, date: pDate };
-        break;
+      if (!nextPrayer) {
+        const [h, m] = prayersArray[0].time.split(":").map(Number);
+        const pDate = new Date();
+        pDate.setDate(pDate.getDate() + 1);
+        pDate.setHours(h, m, 0, 0);
+        nextPrayer = { ...prayersArray[0], date: pDate };
       }
-    }
 
-    if (!nextPrayer) {
-      const [h, m] = prayersArray[0].time.split(":").map(Number);
-      const pDate = new Date();
-      pDate.setDate(pDate.getDate() + 1);
-      pDate.setHours(h, m, 0, 0);
-      nextPrayer = { ...prayersArray[0], date: pDate };
-    }
+      const diff = Math.max(0, nextPrayer.date - now);
+      const hours = Math.floor(diff / 1000 / 3600);
+      const minutes = Math.floor((diff / 1000 % 3600) / 60);
+      const seconds = Math.floor(diff / 1000 % 60);
 
-    const diff = Math.max(0, nextPrayer.date - now);
-    const hours = Math.floor(diff / 1000 / 3600);
-    const minutes = Math.floor((diff / 1000 % 3600) / 60);
-    const seconds = Math.floor(diff / 1000 % 60);
+      setCountdown(
+        `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+      );
+      setNextPrayerText(`متبقي على صلاة ${nextPrayer.name}`);
+    };
 
-    setCountdown(
-      `${hours.toString().padStart(2, "0")}:${minutes
-        .toString()
-        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-    );
-    setNextPrayerText(`متبقي على صلاة ${nextPrayer.name}`);
-  };
+    fetchTimings();
 
-  fetchTimings();
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
 
-  return () => {
-    if (intervalId) clearInterval(intervalId);
-  };
-}, []);
-
-  // Hijri date logic
+  // Hijri date logic (✅ fix مصر: لا يبدأ رمضان إلا بعد ramadanStartFajr + offset)
   useEffect(() => {
-  const fetchRamadan = async () => {
-  try {
-    const city = localStorage.getItem("city") || "Cairo";
+    const fetchRamadan = async () => {
+      try {
+        const city = localStorage.getItem("city") || "Cairo";
 
-    const res = await fetch(
-      `https://api.aladhan.com/v1/hijriCalendarByCity?city=${city}&country=Egypt&method=5&month=9`
-    );
-      const data = await res.json();
-      const today = new Date();
-      const firstDay = data.data[0]; // أول يوم رمضان
+        const res = await fetch(
+          `https://api.aladhan.com/v1/hijriCalendarByCity?city=${encodeURIComponent(
+            city
+          )}&country=Egypt&method=5&month=9&timezonestring=${TZ}`
+        );
 
-      const firstFajr = new Date(
-        firstDay.date.gregorian.year,
-        firstDay.date.gregorian.month.number - 1,
-        firstDay.date.gregorian.day
-      );
+        const data = await res.json();
+        const days = data?.data;
+        if (!Array.isArray(days) || !days.length) return;
 
-      // إذا رمضان بدأ
-      const currentHijri = data.data.find(d => {
-        const gDate = new Date(d.date.gregorian.year, d.date.gregorian.month.number - 1, d.date.gregorian.day);
-        return today >= gDate;
-      });
+        const today = new Date();
 
-      if (currentHijri) {
-        setIsRamadan(true);
-        setActiveDay(Number(currentHijri.date.hijri.day));
-        setHijriHeader(`اليوم ${currentHijri.date.hijri.day} من رمضان`);
-      } else {
-        setIsRamadan(false);
-        setActiveDay(0);
-        setHijriHeader("اليوم 0 من رمضان");
+        const firstDay = days[0];
+        // ✅ هنخلي عداد الأيام يبدأ من المغرب
+        const maghribClean = String(
+          firstDay?.timings?.Maghrib || firstDay?.timings?.Sunset || ""
+        ).split(" ")[0];
+
+        if (!maghribClean.includes(":")) {
+          setIsRamadan(false);
+          setActiveDay(0);
+          setHijriHeader("اليوم 0 من رمضان");
+        } else {
+          const [h, m] = maghribClean.split(":").map(Number);
+
+          const ramadanStartMaghrib = new Date(
+            Number(firstDay.date.gregorian.year),
+            Number(firstDay.date.gregorian.month.number) - 1,
+            Number(firstDay.date.gregorian.day),
+            h,
+            m,
+            0
+          );
+
+          // ✅ إصلاح مصر: الرؤية متأخرة يوم
+          ramadanStartMaghrib.setDate(
+            ramadanStartMaghrib.getDate() + EGYPT_RUYA_OFFSET_DAYS
+          );
+
+          const ramStartedForHeader = today >= ramadanStartMaghrib;
+
+          if (ramStartedForHeader) {
+            const dayNum =
+              Math.floor((today - ramadanStartMaghrib) / 86400000) + 1;
+
+            setIsRamadan(true);
+            setActiveDay(dayNum);
+            setHijriHeader(`اليوم ${dayNum} من رمضان`);
+          } else {
+            setIsRamadan(false);
+            setActiveDay(0);
+            setHijriHeader("اليوم 0 من رمضان");
+          }
+        }
+
+        const twoday = new Date();
+        setGregorianHeader(
+          twoday.toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })
+        );
+      } catch (err) {
+        console.log(err);
       }
-      const twoday = new Date();
-      setGregorianHeader(
-        twoday.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-      );
-    } catch (err) {
-      console.log(err);
-    }
-  };
+    };
 
-  fetchRamadan();
-}, []);
+    fetchRamadan();
+  }, []);
 
   return (
     <header className="w-full">
       {/* زر تغيير المدينة */}
-          <button
+      <button
         onClick={() => {
           localStorage.removeItem("city");
           localStorage.removeItem("city_ar");
@@ -214,7 +245,8 @@ export default function Header({
         }}
         className="absolute top-5 left-3 px-2 py-2 font-bold text-white rounded-full shadow-lg z-50"
         style={{
-          background:"linear-gradient(180deg, #D7B266 0%, #C89B4B 45%, #B98636 100%)",
+          background:
+            "linear-gradient(180deg, #D7B266 0%, #C89B4B 45%, #B98636 100%)",
           border: "2px solid #E7C87A",
           boxShadow: "0 6px 15px rgba(0,0,0,0.25)",
         }}
@@ -235,8 +267,12 @@ export default function Header({
             </IconButton>
 
             <div className="leading-tight">
-              <div className="text-[18px] font-semibold text-[#1f1f1f]">{hijriHeader}</div>
-              <div className="text-[13px] font-medium text-[#1f1f1f]/85 mt-1">{gregorianHeader}</div>
+              <div className="text-[18px] font-semibold text-[#1f1f1f]">
+                {hijriHeader}
+              </div>
+              <div className="text-[13px] font-medium text-[#1f1f1f]/85 mt-1">
+                {gregorianHeader}
+              </div>
             </div>
           </div>
         </div>
