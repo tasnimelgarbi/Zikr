@@ -19,7 +19,7 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
   const [hijriMonthAr, setHijriMonthAr] = useState("");
   const TZ = "Africa/Cairo";
   const ADJUSTMENT = 1;
-  const EGYPT_RUYA_OFFSET_DAYS = 1;
+  const EGYPT_RUYA_OFFSET_DAYS = 0;
   const weekDays = ["خ", "ج", "س", "ح", "أث", "ث", "أر"];
 
   useEffect(() => {

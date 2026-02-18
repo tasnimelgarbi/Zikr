@@ -31,7 +31,7 @@ export default function Header({ onCalendar }) {
   const [nextPrayerText, setNextPrayerText] = useState("");
 
   const TZ = "Africa/Cairo";
-  const EGYPT_RUYA_OFFSET_DAYS = 1;
+  const EGYPT_RUYA_OFFSET_DAYS = 0;
 
   //countdown logic
   useEffect(() => {
@@ -167,48 +167,47 @@ export default function Header({ onCalendar }) {
 
         const today = new Date();
 
-        const firstDay = days[0];
-        // ✅ هنخلي عداد الأيام يبدأ من المغرب
-        const maghribClean = String(
-          firstDay?.timings?.Maghrib || firstDay?.timings?.Sunset || ""
-        ).split(" ")[0];
+      const firstDay = days[0];
 
-        if (!maghribClean.includes(":")) {
-          setIsRamadan(false);
-          setActiveDay(0);
-          setHijriHeader("اليوم 0 من رمضان");
-        } else {
-          const [h, m] = maghribClean.split(":").map(Number);
+// ✅ هنخلي عداد الأيام يبدأ من المغرب
+const maghribClean = String(firstDay?.timings?.Maghrib || "").split(" ")[0];
 
-          const ramadanStartMaghrib = new Date(
-            Number(firstDay.date.gregorian.year),
-            Number(firstDay.date.gregorian.month.number) - 1,
-            Number(firstDay.date.gregorian.day),
-            h,
-            m,
-            0
-          );
+if (!maghribClean.includes(":")) {
+  setIsRamadan(false);
+  setActiveDay(0);
+  setHijriHeader("اليوم 0 من رمضان");
+} else {
+  const [h, m] = maghribClean.split(":").map(Number);
 
-          // ✅ إصلاح مصر: الرؤية متأخرة يوم
-          ramadanStartMaghrib.setDate(
-            ramadanStartMaghrib.getDate() + EGYPT_RUYA_OFFSET_DAYS
-          );
+  const ramadanStartMaghrib = new Date(
+    Number(firstDay.date.gregorian.year),
+    Number(firstDay.date.gregorian.month.number) - 1,
+    Number(firstDay.date.gregorian.day),
+    h,
+    m,
+    0
+  );
 
-          const ramStartedForHeader = today >= ramadanStartMaghrib;
+  // ✅ إصلاح مصر: الرؤية متأخرة يوم
+  ramadanStartMaghrib.setDate(
+    ramadanStartMaghrib.getDate() + EGYPT_RUYA_OFFSET_DAYS
+  );
 
-          if (ramStartedForHeader) {
-            const dayNum =
-              Math.floor((today - ramadanStartMaghrib) / 86400000) + 1;
+  const ramStartedForHeader = today >= ramadanStartMaghrib;
 
-            setIsRamadan(true);
-            setActiveDay(dayNum);
-            setHijriHeader(`اليوم ${dayNum} من رمضان`);
-          } else {
-            setIsRamadan(false);
-            setActiveDay(0);
-            setHijriHeader("اليوم 0 من رمضان");
-          }
-        }
+  if (ramStartedForHeader) {
+    const dayNum =
+      Math.floor((today - ramadanStartMaghrib) / 86400000) + 1;
+
+    setIsRamadan(true);
+    setActiveDay(dayNum);
+    setHijriHeader(`اليوم ${dayNum} من رمضان`);
+  } else {
+    setIsRamadan(false);
+    setActiveDay(0);
+    setHijriHeader("اليوم 0 من رمضان");
+  }
+}
 
         const twoday = new Date();
         setGregorianHeader(
