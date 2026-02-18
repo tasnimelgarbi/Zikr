@@ -223,16 +223,17 @@ export default function RamadanDashboard({ titel = "لوحة تحكم رمضان
     return () => clearInterval(interval);
   }, [ramadanStartMaghrib, isRamadan, fajrTime, iftar]);
 
-  const convertTo12Hour = (time24) => {
-    const [h, m] = time24.split(":").map(Number);
-    const date = new Date();
-    date.setHours(h, m, 0, 0);
-    return date.toLocaleTimeString("ar-EG", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
+    const convertTo12Hour = (time24) => {
+      const [h, m] = time24.split(":").map(Number);
+      const date = new Date();
+      date.setHours(h, m, 0, 0);
+
+      return date.toLocaleTimeString("ar-EG-u-nu-latn", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    };
 
   return (
     <>
