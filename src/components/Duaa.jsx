@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Copy, Share2, RefreshCw, CheckCircle2, X, Image } from "lucide-react";
 import { toPng } from "html-to-image";
 import DUAS from "../data/duas.json";
+import RAMADAN_DUAS from "../data/ramadan_duas.json";
 import BackButton from "./BackButton";
 
 const DAILY_COUNT = 5;
@@ -41,7 +42,6 @@ async function dataUrlToFile(dataUrl, fileName = "dua.png") {
   return new File([blob], fileName, { type: "image/png" });
 }
 
-// ✅ نفس طريقة الـ Base64 عشان أول شير يطلع كامل (Safari/iOS)
 async function fetchAsDataUrl(url) {
   const res = await fetch(url, { cache: "force-cache" });
   const blob = await res.blob();
@@ -53,11 +53,7 @@ async function fetchAsDataUrl(url) {
 }
 
 /**
- * ✅ ShareCard (مخفي)
- * ✅ تعديلين فقط:
- * 1) الخلفية بقت نفس duaa.png + overlay
- * 2) اللوجو والخلفية من DataURL (تحميل فوري ومضمون)
- * ⚠️ باقي المقاسات/التصميم زي ما هو
+ * ShareCard (مخفي) - نفس تصميمك
  */
 function ShareCard({ dua, idx, bgSrc, logoSrc }) {
   return (
@@ -67,7 +63,6 @@ function ShareCard({ dua, idx, bgSrc, logoSrc }) {
       className="fixed left-0 top-0 w-[1080px] min-h-[1350px] h-auto overflow-visible opacity-0 pointer-events-none -z-10 flex flex-col"
       style={{ fontFamily: "'Amiri', serif" }}
     >
-      {/* ✅ نفس خلفية الشير التانية */}
       <img
         src={bgSrc}
         alt="bg"
@@ -78,11 +73,9 @@ function ShareCard({ dua, idx, bgSrc, logoSrc }) {
       />
       <div className="absolute inset-0 bg-black/60" />
 
-      {/* Header */}
       <div className="relative p-16">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-5">
-            {/* ✅ لوجو الموقع */}
             <div className="h-20 w-20 rounded-full overflow-hidden border-4 border-[#D7B266] shadow-[0_18px_50px_rgba(0,0,0,0.15)] bg-white">
               <img
                 src={logoSrc}
@@ -97,7 +90,7 @@ function ShareCard({ dua, idx, bgSrc, logoSrc }) {
             <div>
               <div className="text-[44px] font-extrabold text-white">ذِكر</div>
               <div className="text-[26px] font-semibold text-white/85">
-                أدعية اليوم • صدقة جارية
+                الأدعية اليومية • صدقة جارية
               </div>
             </div>
           </div>
@@ -112,7 +105,6 @@ function ShareCard({ dua, idx, bgSrc, logoSrc }) {
           </div>
         </div>
 
-        {/* Title */}
         <div className="mt-14 rounded-[40px] bg-white/15 backdrop-blur border border-white/20 shadow-[0_24px_80px_rgba(0,0,0,0.35)] p-14">
           <div className="text-center text-[46px] font-extrabold text-white">
             {dua?.title}
@@ -124,7 +116,6 @@ function ShareCard({ dua, idx, bgSrc, logoSrc }) {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="mt-auto p-14 relative">
         <div className="flex items-center justify-between">
           <div className="text-[26px] font-bold text-white/90">
@@ -145,23 +136,96 @@ function ShareCard({ dua, idx, bgSrc, logoSrc }) {
   );
 }
 
+/* ================== Ramadan day logic (Egypt / after Maghrib) ================== */
+const TZ = "Africa/Cairo";
+
+// ✅ نفس فكرة الهيدر: لو الـ API سابق يوم → نخلي بداية رمضان +1 يوم
+const EGYPT_RUYA_OFFSET_DAYS = 0;
+
+function cleanTime(t) {
+  return String(t || "").split(" ")[0];
+}
+
+function parseHHMM(t) {
+  const s = cleanTime(t);
+  if (!s.includes(":")) return null;
+  const [h, m] = s.split(":").map(Number);
+  return { h, m };
+}
+
+// بديل سريع لوقت مصر (مش محتاج تغير TimeZone على Date، بس بنستخدمه للعرض فقط)
+function getCairoNowParts(date = new Date()) {
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = fmt.formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value || "";
+
+  const day = get("day");
+  const month = get("month");
+  const year = get("year");
+  const hour = get("hour");
+  const minute = get("minute");
+
+  return {
+    day: Number(day),
+    month: Number(month),
+    year: Number(year),
+    hour: Number(hour),
+    minute: Number(minute),
+    ddmmyyyy: `${day}-${month}-${year}`,
+  };
+}
+
+async function fetchHijriRamadanCalendarByCity(city) {
+  const url = `https://api.aladhan.com/v1/hijriCalendarByCity?city=${encodeURIComponent(
+    city
+  )}&country=Egypt&method=5&month=9&timezonestring=${TZ}`;
+
+  const res = await fetch(url);
+  const json = await res.json();
+  const days = json?.data;
+  return Array.isArray(days) ? days : [];
+}
+
+async function fetchTimingsByCityToday(city) {
+  // نجيب مواقيت اليوم عشان نعمل schedule عند المغرب بدقة
+  const url = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(
+    city
+  )}&country=Egypt&method=5&timezonestring=${TZ}`;
+
+  const res = await fetch(url);
+  const json = await res.json();
+  return json?.data?.timings || null;
+}
+
 export default function DuaDaily() {
   const [duas, setDuas] = useState([]);
   const [sharingId, setSharingId] = useState(null);
-
-  // ✅ Toast state
+  const [tab, setTab] = useState("ramadan"); // "ramadan" | "daily"
+  const [ramadanInfo, setRamadanInfo] = useState({
+    loading: true,
+    isRamadan: false,
+    dayNum: 0,
+    hijriYear: "",
+    hijriDay: "",
+  });
   const [toast, setToast] = useState(null);
-
-  // ✅ نفس طريقة التحميل الفوري (Base64) للخلفية واللوجو
   const [assetsReady, setAssetsReady] = useState(false);
   const [bgDataUrl, setBgDataUrl] = useState("");
   const [logoDataUrl, setLogoDataUrl] = useState("");
-
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const bgUrl = `${origin}/duaa.png`; // ✅ نفس الخلفية
+  const bgUrl = `${origin}/duaa.png`;
   const logoUrl = `${origin}/logo.png`;
 
-  // ✅ حمّل الأصول أول ما الصفحة تفتح (عشان أول شير يطلع كامل)
+  // ✅ تحميل الخلفية واللوجو بدري
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -183,7 +247,6 @@ export default function DuaDaily() {
         setAssetsReady(true);
       } catch (e) {
         console.error(e);
-        // fallback
         if (!mounted) return;
         setBgDataUrl(bgUrl);
         setLogoDataUrl(logoUrl);
@@ -239,6 +302,149 @@ export default function DuaDaily() {
     pickDaily();
   }, []);
 
+  // ✅ حساب رمضان بنفس منطق Header: بداية رمضان من المغرب + Offset مصر + تحديث عند المغرب بالضبط
+  useEffect(() => {
+    let alive = true;
+    let maghribTimer = null;
+    let safetyTimer = null;
+
+    const computeRamadan = async () => {
+      try {
+        const city = localStorage.getItem("city") || "Cairo";
+
+        setRamadanInfo((s) => ({ ...s, loading: true }));
+
+        // 1) هات تقويم رمضان (شهر 9) — فيه أول يوم و توقيته
+        const cal = await fetchHijriRamadanCalendarByCity(city);
+        if (!cal.length) {
+          if (!alive) return;
+          setRamadanInfo({ loading: false, isRamadan: false, dayNum: 0, hijriYear: "", hijriDay: "" });
+          return;
+        }
+
+        const firstDay = cal[0];
+
+        const maghrib = parseHHMM(firstDay?.timings?.Maghrib);
+        if (!maghrib) {
+          if (!alive) return;
+          setRamadanInfo({ loading: false, isRamadan: false, dayNum: 0, hijriYear: "", hijriDay: "" });
+          return;
+        }
+
+        // 2) تاريخ بداية رمضان (gregorian) عند المغرب
+        const g = firstDay?.date?.gregorian;
+        const start = new Date(
+          Number(g?.year),
+          Number(g?.month?.number) - 1,
+          Number(g?.day),
+          maghrib.h,
+          maghrib.m,
+          0,
+          0
+        );
+
+        // ✅ رُؤية مصر: تأخير يوم
+        start.setDate(start.getDate() + EGYPT_RUYA_OFFSET_DAYS);
+
+        const now = new Date();
+
+        // 3) لو رمضان بدأ بالفعل -> احسب رقم اليوم من المغرب
+        if (now >= start) {
+          const dayNum = Math.floor((now - start) / 86400000) + 1;
+
+          // نحاول نجيب سنة/يوم هجري للعرض (من نفس array لو موجود)
+          const safeIndex = Math.max(0, Math.min(29, dayNum - 1));
+          const hijri = cal[safeIndex]?.date?.hijri;
+
+          if (!alive) return;
+          setRamadanInfo({
+            loading: false,
+            isRamadan: dayNum >= 1 && dayNum <= 30,
+            dayNum: dayNum,
+            hijriYear: hijri?.year || "",
+            hijriDay: hijri?.day || "",
+          });
+        } else {
+          if (!alive) return;
+          setRamadanInfo({ loading: false, isRamadan: false, dayNum: 0, hijriYear: "", hijriDay: "" });
+        }
+
+        // 4) جدولة تحديث عند المغرب "بتاع النهارده" بالظبط
+        // نجيب مواقيت اليوم الحالية عشان نعرف المغرب القادم
+        const timingsToday = await fetchTimingsByCityToday(city);
+        const magToday = parseHHMM(timingsToday?.Maghrib);
+
+        if (maghribTimer) window.clearTimeout(maghribTimer);
+
+        if (magToday) {
+          // نستخدم وقت الجهاز، وغالبًا المستخدم في مصر
+          const nextMaghrib = new Date();
+          nextMaghrib.setHours(magToday.h, magToday.m, 2, 0); // +2 ثواني ضمان
+
+          // لو المغرب عدى، نعمله بكرة
+          if (nextMaghrib <= new Date()) {
+            nextMaghrib.setDate(nextMaghrib.getDate() + 1);
+          }
+
+          const ms = Math.max(2000, nextMaghrib.getTime() - Date.now());
+          maghribTimer = window.setTimeout(() => {
+            computeRamadan();
+          }, ms);
+        }
+
+        // 5) Safety refresh كل ساعة
+        if (safetyTimer) window.clearTimeout(safetyTimer);
+        safetyTimer = window.setTimeout(() => computeRamadan(), 60 * 60 * 1000);
+      } catch (e) {
+        console.error(e);
+        if (!alive) return;
+        setRamadanInfo((s) => ({ ...s, loading: false }));
+        // إعادة محاولة بعد 10 دقايق
+        if (safetyTimer) window.clearTimeout(safetyTimer);
+        safetyTimer = window.setTimeout(() => computeRamadan(), 10 * 60 * 1000);
+      }
+    };
+
+    computeRamadan();
+
+    return () => {
+      alive = false;
+      if (maghribTimer) window.clearTimeout(maghribTimer);
+      if (safetyTimer) window.clearTimeout(safetyTimer);
+    };
+  }, []);
+
+  // ✅ تجهيز دعاء رمضان لليوم الحالي
+ const ramadanList = useMemo(() => {
+  if (!ramadanInfo.isRamadan || !ramadanInfo.dayNum) return [];
+
+  const item = (RAMADAN_DUAS || []).find(
+    (d) => Number(d.day) === Number(ramadanInfo.dayNum)
+  );
+  if (!item) return [];
+
+  const baseTitle =
+    ramadanInfo.hijriYear
+      ? `${ramadanInfo.dayNum} رمضان ${ramadanInfo.hijriYear} هـ`
+      : `اليوم ${ramadanInfo.dayNum} من رمضان`;
+
+  // ✅ لو الملف الجديد (duas array)
+  if (Array.isArray(item.duas) && item.duas.length) {
+    return item.duas.slice(0, 4).map((d, i) => ({
+      title: `${baseTitle}`,
+      text: d?.text || "",
+      source: d?.source || "",
+    }));
+  }
+
+  // ✅ توافق مع الشكل القديم (text واحد)
+  if (item.text) {
+    return [{ title: baseTitle, text: item.text, source: item.source || "" }];
+  }
+
+  return [];
+}, [ramadanInfo]);
+
   const copyDua = async (dua) => {
     await navigator.clipboard.writeText(buildShareText(dua.title, dua.text));
     showToast("copy");
@@ -254,24 +460,16 @@ export default function DuaDaily() {
     showToast("share");
   };
 
-  /**
-   * ✅ مشاركة صورة
-   * - نفس منطق الانتظار للخطوط
-   * - + ضمان الأصول base64 قبل التصوير (لو لأي سبب ما اتجهزتش)
-   */
   const shareAsImage = async (dua, idx) => {
     try {
       setSharingId(idx);
-
       await new Promise((r) => requestAnimationFrame(r));
 
       const node = document.getElementById(`share-card-${idx}`);
       if (!node) throw new Error("Share card not found");
 
-      // ✅ استنى تحميل الخطوط
       if (document.fonts?.ready) await document.fonts.ready;
 
-      // ✅ لو الأصول مش جاهزة (نادرًا)، جهزها هنا
       if (!assetsReady) {
         const [bg64, logo64] = await Promise.all([
           bgDataUrl ? Promise.resolve(bgDataUrl) : fetchAsDataUrl(bgUrl),
@@ -281,7 +479,6 @@ export default function DuaDaily() {
         if (!logoDataUrl) setLogoDataUrl(logo64);
       }
 
-      // ✅ استنى صور الكارت نفسها (مهم)
       const imgs = Array.from(node.querySelectorAll("img"));
       await Promise.all(
         imgs.map(async (img) => {
@@ -301,36 +498,19 @@ export default function DuaDaily() {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: "#000",
-        // 🔥 مهم عشان الكارت مخفي بـ opacity-0
-        style: {
-          opacity: "1",
-          transform: "none",
-        },
+        style: { opacity: "1", transform: "none" },
       });
 
       const file = await dataUrlToFile(dataUrl, "dua-zekr.png");
       const text = `🌿 دعاء اليوم من ذِكر\nhttps://zikrr.vercel.app/`;
 
-      if (
-        navigator.canShare &&
-        navigator.canShare({ files: [file] }) &&
-        navigator.share
-      ) {
-        await navigator.share({
-          title: "ذِكر",
-          text,
-          files: [file],
-        });
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+        await navigator.share({ title: "ذِكر", text, files: [file] });
         showToast("image");
         return;
       }
 
-      // fallback: واتساب بالنص
-      window.open(
-        `https://wa.me/?text=${encodeURIComponent(
-          buildShareText(dua.title, dua.text)
-        )}`
-      );
+      window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText(dua.title, dua.text))}`);
       showToast("share");
     } catch (e) {
       console.error(e);
@@ -339,23 +519,19 @@ export default function DuaDaily() {
     }
   };
 
+  const list = tab === "ramadan" ? ramadanList : duas;
+
   return (
     <div dir="rtl" className="min-h-screen bg-[#F4EDDF] px-4 py-10">
-      {/* ✅ Toast Popup */}
+      {/* Toast Popup */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] px-4 w-full max-w-md">
           <div className="rounded-2xl bg-white/95 backdrop-blur border border-black/10 shadow-[0_18px_50px_rgba(0,0,0,0.18)] p-4">
             <div className="flex items-start gap-3">
               <div className="mt-0.5">
-                {toast.type === "copy" && (
-                  <CheckCircle2 className="w-6 h-6 text-green-600" />
-                )}
-                {toast.type === "share" && (
-                  <Share2 className="w-6 h-6 text-[#B98636]" />
-                )}
-                {toast.type === "image" && (
-                  <Image className="w-6 h-6 text-zinc-700" />
-                )}
+                {toast.type === "copy" && <CheckCircle2 className="w-6 h-6 text-green-600" />}
+                {toast.type === "share" && <Share2 className="w-6 h-6 text-[#B98636]" />}
+                {toast.type === "image" && <Image className="w-6 h-6 text-zinc-700" />}
               </div>
 
               <div className="flex-1 text-[15px] leading-[1.8] font-semibold text-zinc-800">
@@ -375,36 +551,55 @@ export default function DuaDaily() {
       )}
 
       <div className="max-w-md mx-auto space-y-5">
-        <BackButton className="mb-4" />
+        <div className="flex items-center justify-between mb-4">
+        <BackButton />
 
-        <div className="text-center text-2xl font-extrabold text-[#1f1f1f]">
-          🌿 أدعية اليوم
+        <div className="text-2xl font-extrabold text-[#1f1f1f] mb-2">
+          {tab === "ramadan" ? "أدعية رمضان" : "الأدعية اليومية"}
         </div>
 
-        <button
-          onClick={() => pickDaily({ forceNew: true })}
-          className="w-full rounded-full py-3 text-white font-extrabold shadow-lg"
-          style={{
-            background: "linear-gradient(180deg,#D7B266,#C89B4B,#B98636)",
-          }}
-        >
-          <span className="inline-flex gap-2 items-center justify-center">
-            <RefreshCw className="w-5 h-5" />
-            تغيير أدعية اليوم
-          </span>
-        </button>
+        {/* عنصر فارغ علشان يظبط التوسيط */}
+        <div className="w-8" />
+      </div>
 
-        {duas.map((dua, idx) => (
+        {/* Tabs (رمضان أولاً) */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setTab("ramadan")}
+            className={`rounded-full py-3 font-extrabold shadow-sm border transition ${
+              tab === "ramadan" ? "bg-white" : "bg-transparent"
+            }`}
+          >
+             أدعية رمضان
+          </button>
+          <button
+            onClick={() => setTab("daily")}
+            className={`rounded-full py-3 font-extrabold shadow-sm border transition ${
+              tab === "daily" ? "bg-white" : "bg-transparent"
+            }`}
+          >
+            الأدعية اليومية
+          </button>
+        </div>
+
+        {/* زر تغيير أدعية اليوم (في تبويب اليوم فقط) */}
+        {tab === "daily" && (
+          <button
+            onClick={() => pickDaily({ forceNew: true })}
+            className="w-full rounded-full py-3 text-white font-extrabold shadow-lg"
+            style={{ background: "linear-gradient(180deg,#D7B266,#C89B4B,#B98636)" }}
+          >
+            <span className="inline-flex gap-2 items-center justify-center">
+              <RefreshCw className="w-5 h-5" />
+              تغيير أدعية اليوم
+            </span>
+          </button>
+        )}
+
+        {list.map((dua, idx) => (
           <React.Fragment key={idx}>
-            {/* ✅ ShareCard مخفي: ده اللي بيتحوّل لصورة عند المشاركة */}
-            <ShareCard
-              dua={dua}
-              idx={idx}
-              bgSrc={bgDataUrl || bgUrl}
-              logoSrc={logoDataUrl || logoUrl}
-            />
+            <ShareCard dua={dua} idx={idx} bgSrc={bgDataUrl || bgUrl} logoSrc={logoDataUrl || logoUrl} />
 
-            {/* ✅ الكارت اللي ظاهر في الصفحة (زي كودك) */}
             <div className="rounded-[28px] bg-[#FBFAF6] shadow-lg overflow-hidden">
               <div className="p-4 bg-[#F3EAD2] font-extrabold text-center">
                 {dua.title}
@@ -418,19 +613,14 @@ export default function DuaDaily() {
               </div>
 
               <div className="grid grid-cols-3 gap-2 p-4">
-                <button
-                  onClick={() => copyDua(dua)}
-                  className="rounded-xl py-2 border font-bold"
-                >
+                <button onClick={() => copyDua(dua)} className="rounded-xl py-2 border font-bold">
                   <Copy className="inline w-4 h-4" /> نسخ
                 </button>
 
                 <button
                   onClick={() => shareDuaText(dua)}
                   className="rounded-xl py-2 text-white font-bold"
-                  style={{
-                    background: "linear-gradient(180deg,#D7B266,#C89B4B)",
-                  }}
+                  style={{ background: "linear-gradient(180deg,#D7B266,#C89B4B)" }}
                 >
                   <Share2 className="inline w-4 h-4" /> شير
                 </button>
@@ -440,13 +630,18 @@ export default function DuaDaily() {
                   className="rounded-xl py-2 border font-bold"
                   disabled={sharingId === idx}
                 >
-                  <Image className="inline w-4 h-4" />{" "}
-                  {sharingId === idx ? "..." : "صورة"}
+                  <Image className="inline w-4 h-4" /> {sharingId === idx ? "..." : "صورة"}
                 </button>
               </div>
             </div>
           </React.Fragment>
         ))}
+
+        {tab === "ramadan" && !ramadanInfo.loading && ramadanInfo.isRamadan && list.length === 0 ? (
+          <div className="text-center text-zinc-600 font-bold">
+            مفيش دعاء محفوظ لليوم ده في ramadan_duas.json (لازم day من 1 لـ 30).
+          </div>
+        ) : null}
       </div>
     </div>
   );

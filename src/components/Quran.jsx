@@ -6,16 +6,8 @@ import BackButton from "./BackButton.jsx";
 function AyahBadge({ n }) {
   return (
     <span className="inline-flex align-middle mx-1">
-      <svg
-        width="28"
-        height="28"
-        viewBox="0 0 40 40"
-        className="inline-block"
-        aria-hidden="true"
-      >
-        {/* إطار خارجي */}
+      <svg width="28" height="28" viewBox="0 0 40 40" className="inline-block" aria-hidden="true">
         <circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" strokeWidth="1.4" opacity="0.55" />
-        {/* نقاط زخرفية بسيطة */}
         <circle cx="20" cy="3.6" r="1.2" fill="currentColor" opacity="0.35" />
         <circle cx="20" cy="36.4" r="1.2" fill="currentColor" opacity="0.35" />
         <circle cx="3.6" cy="20" r="1.2" fill="currentColor" opacity="0.35" />
@@ -40,9 +32,7 @@ function AyahBadge({ n }) {
 function SurahHeader({ name }) {
   return (
     <div className="text-center mb-4">
-      <h2 className="text-[28px] sm:text-[34px] font-extrabold tracking-tight text-zinc-900">
-        {name}
-      </h2>
+      <h2 className="text-[28px] sm:text-[34px] font-extrabold tracking-tight text-zinc-900">{name}</h2>
       <div className="mt-3 h-px w-40 mx-auto bg-zinc-200" />
     </div>
   );
@@ -60,26 +50,31 @@ function Basmala() {
 }
 
 export default function Quran() {
+  const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [wird, setWird] = React.useState(location.state || null);
 
-const { id } = useParams();
-const location = useLocation();
-const navigate = useNavigate();
-const [wird, setWird] = React.useState(location.state || null);
+  // ✅ Bookmark
+  const BOOKMARK_KEY = `quran-bookmark-${id}`;
+  const [bookmark, setBookmark] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem(BOOKMARK_KEY);
+      return saved ? JSON.parse(saved) : null; // { surahName, ayahNumber }
+    } catch {
+      return null;
+    }
+  });
 
-// fallback لو عملت refresh أو state مش موجود
-React.useEffect(() => {
-  if (!wird) {
-    // جلب الورد من localStorage
-    const savedWirds = JSON.parse(localStorage.getItem("quran-wirds-progress") || "[]");
-    const wirdId = Number(id);
-    
-    // placeholder لو مش مخزّن كامل
-    const placeholder = { id: wirdId, ayahs: [] };
-    
-    const found = savedWirds.find(w => w.id === wirdId) || placeholder;
-    setWird(found);
-  }
-}, [id, wird]);
+  // ✅ fallback لو عملت refresh أو state مش موجود
+  React.useEffect(() => {
+    if (!wird) {
+      const wirdId = Number(id);
+      const allWirds = JSON.parse(localStorage.getItem("quran-wirds-data") || "[]");
+      const found = Array.isArray(allWirds) ? allWirds.find((w) => w.id === wirdId) : null;
+      setWird(found || { id: wirdId, title: `الورد ${wirdId}`, ayahs: [] });
+    }
+  }, [id, wird]);
 
   const grouped = useMemo(() => {
     if (!wird?.ayahs?.length) return [];
@@ -89,10 +84,42 @@ React.useEffect(() => {
       acc[key].push(ayah);
       return acc;
     }, {});
-    return Object.entries(map); // [ [surahName, ayahs], ... ]
+    return Object.entries(map);
   }, [wird]);
 
-    if (!wird) {
+  const isBookmarkedAyah = (ayah) => {
+    return (
+      bookmark &&
+      bookmark.surahName === ayah.surahName &&
+      Number(bookmark.ayahNumber) === Number(ayah.ayahNumber)
+    );
+  };
+
+  const setBookmarkOnAyah = (ayah) => {
+    const payload = { surahName: ayah.surahName, ayahNumber: ayah.ayahNumber };
+    setBookmark(payload);
+    localStorage.setItem(BOOKMARK_KEY, JSON.stringify(payload));
+  };
+
+  const clearBookmark = () => {
+    setBookmark(null);
+    localStorage.removeItem(BOOKMARK_KEY);
+  };
+
+  const goToBookmark = () => {
+    if (!bookmark) return;
+    const el = document.getElementById(`bm-${bookmark.surahName}-${bookmark.ayahNumber}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // لمسة صغيرة لفت الانتباه
+      el.classList.add("ring-2", "ring-amber-400/70");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-amber-400/70");
+      }, 900);
+    }
+  };
+
+  if (!wird) {
     return (
       <div className="min-h-screen grid place-items-center">
         <button onClick={() => navigate(-1)}>رجوع</button>
@@ -102,16 +129,51 @@ React.useEffect(() => {
 
   return (
     <div dir="rtl" className="min-h-screen bg-zinc-50">
-      {/* Top bar (زي quran.com بسيط) */}
+      {/* Top bar */}
       <div className="sticky top-0 z-20 backdrop-blur bg-zinc-50/80 border-b border-zinc-200">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="text-sm text-zinc-600">
             <span className="font-semibold text-zinc-900">الورد</span>{" "}
             <span className="text-zinc-700">رقم {id}</span>
+            {wird?.title ? <span className="text-zinc-500"> • {wird.title}</span> : null}
           </div>
-             <div className="absolute left-4 top-1/2 -translate-y-1/2 z-30">
-                <BackButton />
-              </div>
+
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-30">
+            <BackButton />
+          </div>
+        </div>
+
+        {/* ✅ Bookmark actions */}
+        <div className="max-w-3xl mx-auto px-4 pb-3 flex items-center gap-2">
+          <button
+            onClick={goToBookmark}
+            disabled={!bookmark}
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition ${
+              bookmark
+                ? "bg-white border-zinc-200 text-zinc-800 active:scale-[0.98]"
+                : "bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed"
+            }`}
+          >
+            الرجوع للعلامة
+          </button>
+
+          <button
+            onClick={clearBookmark}
+            disabled={!bookmark}
+            className={`px-3 py-1.5 rounded-full text-sm font-semibold border transition ${
+              bookmark
+                ? "bg-white border-zinc-200 text-zinc-800 active:scale-[0.98]"
+                : "bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed"
+            }`}
+          >
+            مسح العلامة
+          </button>
+
+          {bookmark ? (
+            <div className="text-xs text-zinc-500 mr-1">
+              علامة عند: {bookmark.surahName} • {bookmark.ayahNumber}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -123,11 +185,8 @@ React.useEffect(() => {
             {grouped.map(([surahName, ayahs], idx) => (
               <section key={`${surahName}-${idx}`} className={idx ? "mt-10" : ""}>
                 <SurahHeader name={surahName} />
-
-                {/* (اختياري) البسملة: اعرضها لأول سورة في الورد أو لو بتحب دايمًا */}
                 {idx === 0 ? <Basmala /> : null}
 
-                {/* Body: زي quran.com - آيات بتنسيق مريح */}
                 <div
                   className="text-zinc-900 leading-[2.35] sm:leading-[2.6] text-[24px] sm:text-[28px]"
                   style={{
@@ -136,21 +195,39 @@ React.useEffect(() => {
                     textJustify: "inter-word",
                   }}
                 >
-                  {ayahs.map((ayah, i) => (
-                    <span key={i}>
-                      <span className="whitespace-pre-wrap">{ayah.text}</span>
-                      {/* رقم الآية بدائرة */}
-                      <span className="text-zinc-700">
-                        <AyahBadge n={ayah.ayahNumber} />
-                      </span>
+                  {ayahs.map((ayah, i) => {
+                    const bookmarked = isBookmarkedAyah(ayah);
+                    const domId = `bm-${ayah.surahName}-${ayah.ayahNumber}`;
 
-                      {/* مسافة بسيطة بين الآيات */}
-                      <span className="inline-block w-1" />
-                    </span>
-                  ))}
+                    return (
+                      <span
+                        key={i}
+                        id={domId}
+                        onClick={() => setBookmarkOnAyah(ayah)}
+                        className={`cursor-pointer rounded-lg transition ${
+                          bookmarked ? "bg-amber-100/60" : "hover:bg-black/5"
+                        }`}
+                        title="اضغط لوضع علامة هنا"
+                      >
+                        <span className="whitespace-pre-wrap">{ayah.text}</span>
+
+                        <span className="text-zinc-700">
+                          <AyahBadge n={ayah.ayahNumber} />
+                        </span>
+
+                        <span className="inline-block w-1" />
+                      </span>
+                    );
+                  })}
                 </div>
               </section>
             ))}
+
+            {!wird?.ayahs?.length ? (
+              <div className="text-center py-10 text-zinc-600">
+                البيانات غير متاحة (جرّب ترجع لصفحة الأوراد وتفتح الورد تاني)
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
