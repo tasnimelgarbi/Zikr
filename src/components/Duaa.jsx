@@ -502,7 +502,7 @@ export default function DuaDaily() {
       });
 
       const file = await dataUrlToFile(dataUrl, "dua-zekr.png");
-      const text = `🌿 دعاء اليوم من ذِكر\nhttps://zikrr.vercel.app/`;
+      const text = `🌿 دعاء اليوم من ذِكر`;
 
       if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
         await navigator.share({ title: "ذِكر", text, files: [file] });
