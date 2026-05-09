@@ -209,7 +209,7 @@ async function fetchTimingsByCityToday(city) {
 export default function DuaDaily() {
   const [duas, setDuas] = useState([]);
   const [sharingId, setSharingId] = useState(null);
-  const [tab, setTab] = useState("ramadan"); // "ramadan" | "daily"
+  const [tab, setTab] = useState("daily"); 
   const [ramadanInfo, setRamadanInfo] = useState({
     loading: true,
     isRamadan: false,
